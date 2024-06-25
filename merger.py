@@ -71,7 +71,7 @@ def merge_files(path):
         # Generate output filename
         base_name = os.path.basename(html_file)
         name_without_ext = os.path.splitext(base_name)[0]
-        output_filename = f"{name_without_ext}.cxpp"
+        output_filename = f"{name_without_ext}_capp.html"
         output_file = os.path.join(directory, output_filename)
 
         # Write the merged content to the new file
