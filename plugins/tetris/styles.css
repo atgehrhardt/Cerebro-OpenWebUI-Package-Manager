@@ -1,0 +1,54 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    color: #ecf0f1;
+    font-family: 'Arial', sans-serif;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+}
+#game-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 10px;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+}
+#controls {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 120px;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+}
+#controls h3 {
+    margin-top: 0;
+}
+#controls ul {
+    padding-left: 20px;
+    font-size: 12px;
+}
+#game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+#tetris-board {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+#info {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 200px;
+    margin-top: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 5px;
+    border-radius: 5px;
+}
