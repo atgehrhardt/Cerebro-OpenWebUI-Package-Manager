@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            background-color: black;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        canvas {
+            border: 2px solid #00f;
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Pac-Man</h1>
+        <canvas id="gameCanvas" width="560" height="620"></canvas>
+        <p id="score">Score: 0</p>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
+        const CELL_SIZE = 20;
+        const ROWS = 31;
+        const COLS = 28;
+
+        let pacman = { x: 14, y: 23, direction: 0, nextDirection: 0, mouthOpen: true };
+        let ghosts = [
+            { x: 14, y: 11, color: 'red', direction: 0 },
+            { x: 13, y: 14, color: 'pink', direction: 0 },
+            { x: 14, y: 14, color: 'cyan', direction: 0 },
+            { x: 15, y: 14, color: 'orange', direction: 0 }
+        ];
+
+        let score = 0;
+
+        // Same maze array as before
+
+        function drawMaze() {
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    if (maze[row][col] === 1) {
+                        ctx.fillStyle = '#00f';
+                        ctx.fillRect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    } else if (maze[row][col] === 2) {
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath();
+                        ctx.arc(col * CELL_SIZE + CELL_SIZE / 2, row * CELL_SIZE + CELL_SIZE / 2, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (maze[row][col] === 3) {
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath();
+                        ctx.arc(col * CELL_SIZE + CELL_SIZE / 2, row * CELL_SIZE + CELL_SIZE / 2, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawPacman() {
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            let mouthAngle = pacman.mouthOpen ? Math.PI / 4 : 0;
+            ctx.arc(
+                pacman.x * CELL_SIZE + CELL_SIZE / 2,
+                pacman.y * CELL_SIZE + CELL_SIZE / 2,
+                CELL_SIZE / 2,
+                (pacman.direction * Math.PI / 2) + mouthAngle,
+                (pacman.direction * Math.PI / 2) + (2 * Math.PI - mouthAngle)
+            );
+            ctx.lineTo(pacman.x * CELL_SIZE + CELL_SIZE / 2, pacman.y * CELL_SIZE + CELL_SIZE / 2);
+            ctx.fill();
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                ctx.fillStyle = ghost.color;
+                ctx.beginPath();
+                ctx.arc(ghost.x * CELL_SIZE + CELL_SIZE / 2, ghost.y * CELL_SIZE + CELL_SIZE / 2, CELL_SIZE / 2, 0, Math.PI);
+                ctx.lineTo(ghost.x * CELL_SIZE + CELL_SIZE, ghost.y * CELL_SIZE + CELL_SIZE);
+                ctx.lineTo(ghost.x * CELL_SIZE, ghost.y * CELL_SIZE + CELL_SIZE);
+                ctx.fill();
+            });
+        }
+
+        // Keep the movePacman, moveGhost, and update functions as they were
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMaze();
+            drawPacman();
+            drawGhosts();
+
+            // Update score display
+            scoreElement.textContent = `Score: ${score}`;
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft':
+                    pacman.nextDirection = 2;
+                    break;
+                case 'ArrowRight':
+                    pacman.nextDirection = 0;
+                    break;
+                case 'ArrowUp':
+                    pacman.nextDirection = 3;
+                    break;
+                case 'ArrowDown':
+                    pacman.nextDirection = 1;
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
