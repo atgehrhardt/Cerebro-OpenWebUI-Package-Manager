@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="pkg_name" content="suggestions">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Panel</title>
+    <style>
+        body {
+            background-color: transparent;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        .control-panel {
+            margin-top: 20px;
+            padding: 10px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <input type="text" id="promptInput" placeholder="Enter prompt">
+        <button onclick="sendPrompt()">Set Prompt</button>
+        <button onclick="submitPrompt()">Submit Prompt</button>
+    </div>
+    <script>
+        function sendPrompt() {
+            const promptText = document.getElementById('promptInput').value;
+            console.log("Sending prompt:", promptText);
+            
+            window.parent.postMessage({
+                type: 'input:prompt',
+                text: promptText
+            }, window.location.origin);
+        }
+
+        function submitPrompt() {
+            console.log("Submitting prompt");
+            
+            window.parent.postMessage({
+                type: 'action:submit',
+                text: 'Submitting prompt'
+            }, window.location.origin);
+        }
+
+        function sendAndSubmitPrompt() {
+            sendPrompt();
+            setTimeout(submitPrompt, 100); // Small delay to ensure the prompt is set before submitting
+        }
+
+        // Log when the iframe is loaded
+        window.onload = function() {
+            console.log("Iframe loaded. Origin:", window.location.origin);
+        }
+    </script>
+</body>
+</html>
