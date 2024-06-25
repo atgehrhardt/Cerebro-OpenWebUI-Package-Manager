@@ -13,22 +13,23 @@
             display: flex;
             justify-content: flex-start;
             align-items: flex-start;
-            min-height: 100vh;
+            height: 100vh; /* Change from min-height to height */
             font-family: 'Arial', sans-serif;
+            overflow: hidden; /* Disable scrolling on body */
         }
 
         .card {
-            background-color: rgba(44, 62, 80, 0.8); /* Added transparency */
+            background-color: rgba(44, 62, 80, 0.8);
             border-radius: 15px;
             padding: 20px;
             width: 900px;
-            height: 300vh;
+            max-height: 80vh; /* Change from height to max-height */
             margin-left: 20px;
             margin-top: 20px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); /* Enhanced box shadow */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
             color: white;
             overflow-y: auto;
-            backdrop-filter: blur(10px); /* Added blur effect */
+            backdrop-filter: blur(10px);
         }
 
         .card h2 {
