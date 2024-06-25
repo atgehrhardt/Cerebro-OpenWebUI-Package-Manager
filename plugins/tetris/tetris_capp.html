@@ -5,19 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="pkg_name" content="tetris">
     <title>Tetris</title>
-    <style id="tetris-style"></style>
-    <script>
-    (function() {
-        var baseUrl = window.location.origin;
-        var cssPath = '/app/backend/data/uploads/cerebro/plugins/tetris/styles.css';
-        fetch(baseUrl + cssPath)
-          .then(response => response.text())
-          .then(css => {
-            document.getElementById('tetris-style').textContent = css;
-          })
-          .catch(error => console.error('Error loading Tetris styles:', error));
-    })();
-    </script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            color: #ecf0f1;
+            font-family: 'Arial', sans-serif;
+            width: 100%;
+            height: 100%;
+            background-color: transparent;
+        }
+        #game-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 10px;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        #controls {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            width: 120px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #controls h3 {
+            margin-top: 0;
+        }
+        #controls ul {
+            padding-left: 20px;
+            font-size: 12px;
+        }
+        #game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #tetris-board {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        #info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 200px;
+            margin-top: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
     <div id="game-container">
@@ -40,21 +83,6 @@
         </div>
     </div>
 
-    <script id="tetris-script">
-    </script>
-    
-    <script>
-    (function() {
-        var baseUrl = window.location.origin;
-        var jsPath = '/app/backend/data/uploads/cerebro/plugins/tetris/tetris.js';
-        fetch(baseUrl + jsPath)
-          .then(response => response.text())
-          .then(code => {
-            document.getElementById('tetris-script').textContent = code;
-            eval(code);
-          })
-          .catch(error => console.error('Error loading Tetris script:', error));
-    })();
-    </script>
+    <script src="tetris.js"></script>
 </body>
 </html>
