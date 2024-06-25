@@ -6,6 +6,9 @@ import json
 import aiohttp
 import uuid
 import re
+import zipfile
+import io
+import shutil
 from utils.misc import get_last_user_message
 from apps.webui.models.files import Files
 
@@ -29,7 +32,7 @@ class Filter:
         self.file = None
         self.pkg_launch = False
         self.installed_pkgs = []
-        self.packages = []  # Initialize self.packages here
+        self.packages = []
 
     def create_file(
         self, file_name: str, title: str, content: str, user_id: Optional[str] = None
@@ -119,54 +122,59 @@ class Filter:
         package_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
         return os.path.exists(package_dir)
 
-    def install_package(self, url: str):
-        if not url:
-            print("No URL provided, cannot download the file.")
-            return
+    def install_package(self, package_name: str):
+        base_url = "https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/tree/main/plugins"
+        raw_url = f"https://raw.githubusercontent.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/main/plugins/{package_name}/{package_name}_capp.html"
+        zip_url = f"https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/archive/refs/heads/main.zip"
 
-        try:
-            print(f"Downloading the file from {url}...\n")
-            response = requests.get(url)
-            response.raise_for_status()
-            file_content = response.text
-            print("Downloaded file content:")
-            print(file_content)
-        except Exception as e:
-            raise Exception(f"Error downloading file: {str(e)}")
-
-        pkg_name_match = re.search(
-            r'<meta\s+name=["\']pkg_name["\']\s+content=["\']([^"\']+)["\']',
-            file_content,
-            re.IGNORECASE,
-        )
-        if not pkg_name_match:
-            print("pkg_name meta tag not found in the downloaded file.")
-            return
-
-        pkg_name = pkg_name_match.group(1)
-        if not pkg_name:
-            print("Invalid pkg_name, cannot proceed with installation.")
-            return
-
-        if self.is_package_installed(pkg_name):
-            print(f"Package {pkg_name} is already installed.")
+        if self.is_package_installed(package_name):
+            print(f"Package {package_name} is already installed.")
             self.pkg_launch = "Already Installed"
             return
 
-        file_name = f"{pkg_name}_capp.html"
-
         try:
-            if not self.user_id:
-                raise ValueError("User ID is not set. Cannot create file.")
+            # Download the zip file
+            response = requests.get(zip_url)
+            response.raise_for_status()
+
+            # Extract the specific package directory
+            with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+                package_dir = (
+                    f"Cerebro-OpenWebUI-Package-Manager-main/plugins/{package_name}"
+                )
+                for file in zip_ref.namelist():
+                    if file.startswith(package_dir) and file != package_dir + "/":
+                        zip_ref.extract(file, UPLOAD_DIR)
+
+            # Move the extracted directory to the correct location
+            src_dir = os.path.join(UPLOAD_DIR, package_dir)
+            dest_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
+            shutil.move(src_dir, dest_dir)
+
+            # Clean up temporary files
+            shutil.rmtree(
+                os.path.join(UPLOAD_DIR, "Cerebro-OpenWebUI-Package-Manager-main")
+            )
+
+            # Get the content of the main HTML file
+            html_file_path = os.path.join(dest_dir, f"{package_name}_capp.html")
+            with open(html_file_path, "r", encoding="utf-8") as f:
+                file_content = f.read()
+
+            # Create file in the database
             created_file = self.create_file(
-                file_name, file_name, file_content, self.user_id
+                f"{package_name}_capp.html",
+                f"{package_name}_capp.html",
+                file_content,
+                self.user_id,
             )
             self.file = created_file.id if hasattr(created_file, "id") else created_file
-            print(f"Package {pkg_name} installed successfully.")
+            print(f"Package {package_name} installed successfully.")
             self.pkg_launch = "Installed"
+
         except Exception as e:
-            print(f"Error creating file: {str(e)}")
-            raise Exception(f"Error creating file: {str(e)}")
+            print(f"Error installing package {package_name}: {str(e)}")
+            raise Exception(f"Error installing package {package_name}: {str(e)}")
 
     def uninstall_package(self, package_name: str):
         package_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
@@ -273,9 +281,9 @@ class Filter:
                     command_parts = last_message.split()
                     print(f"Command parts: {command_parts}")
                     if len(command_parts) >= 3:
-                        url = " ".join(command_parts[2:])
-                        print(f"Installing package from URL: {url}")
-                        self.install_package(url)
+                        package_name = command_parts[2]
+                        print(f"Installing package: {package_name}")
+                        self.install_package(package_name)
                         return body
 
                 elif last_message.startswith("owui uninstall"):
@@ -291,6 +299,7 @@ class Filter:
                     self.list_packages(body)
                     print(f"\n\n\nReturning body: {body}\n\n\n")
                     return body
+        return body
 
     def outlet(self, body: dict, __user__: Optional[dict] = None) -> dict:
         print(f"outlet:{__name__}")
