@@ -5,7 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="pkg_name" content="tetris">
     <title>Tetris</title>
-    <link rel="stylesheet" href="/app/backend/data/uploads/cerebro/plugins/tetris/styles.css">
+    <style id="tetris-style"></style>
+    <script>
+    (function() {
+        var baseUrl = window.location.origin;
+        var cssPath = '/app/backend/data/uploads/cerebro/plugins/tetris/styles.css';
+        fetch(baseUrl + cssPath)
+          .then(response => response.text())
+          .then(css => {
+            document.getElementById('tetris-style').textContent = css;
+          })
+          .catch(error => console.error('Error loading Tetris styles:', error));
+    })();
+    </script>
 </head>
 <body>
     <div id="game-container">
@@ -28,6 +40,21 @@
         </div>
     </div>
 
-    <script src="/app/backend/data/uploads/cerebro/plugins/tetris/tetris.js"></script>
+    <script id="tetris-script">
+    </script>
+    
+    <script>
+    (function() {
+        var baseUrl = window.location.origin;
+        var jsPath = '/app/backend/data/uploads/cerebro/plugins/tetris/tetris.js';
+        fetch(baseUrl + jsPath)
+          .then(response => response.text())
+          .then(code => {
+            document.getElementById('tetris-script').textContent = code;
+            eval(code);
+          })
+          .catch(error => console.error('Error loading Tetris script:', error));
+    })();
+    </script>
 </body>
 </html>
