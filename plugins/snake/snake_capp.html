@@ -262,7 +262,13 @@
 
         window.addEventListener('keydown', handleKeyPress);
         newGameBtn.addEventListener('click', startGame);
-
+        
+        window.addEventListener('keydown', handleKeyPress, true);
+        window.addEventListener('keyup', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+        }, true);
+        
         // Initial draw
         drawGrid();
     </script>
