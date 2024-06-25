@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="pkg_name" content="google_news_rss">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google News RSS Feed</title>
+    <style>
+        body {
+            background-color: transparent;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .card {
+            background-color: #2c3e50;
+            border-radius: 15px;
+            padding: 20px;
+            width: 900px;
+            height: 80vh;
+            margin-left: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            color: white;
+            overflow-y: auto;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            border-bottom: 1px solid #34495e;
+            padding-bottom: 10px;
+            font-size: 24px;
+            color: #ecf0f1;
+        }
+
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .news-item {
+            background-color: #34495e;
+            border-radius: 10px;
+            padding: 15px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .news-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .news-item a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 16px;
+            line-height: 1.4;
+            display: block;
+        }
+
+        .news-item a:hover {
+            color: #2980b9;
+        }
+
+        #loading {
+            text-align: center;
+            font-size: 18px;
+            color: #ecf0f1;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Google News</h2>
+        <div id="news-list">
+            <div id="loading">Loading news...</div>
+        </div>
+    </div>
+
+    <script>
+        const RSS_URL = 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en';
+        const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
+
+        function fetchNews() {
+            const newsListElement = document.getElementById("news-list");
+            newsListElement.innerHTML = '<div id="loading">Fetching news...</div>';
+
+            fetch(API_URL)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status !== 'ok') {
+                        throw new Error("Error fetching RSS feed");
+                    }
+                    if (data.items.length === 0) {
+                        throw new Error("No news items found in the feed");
+                    }
+                    let html = '<div class="news-grid">';
+                    data.items.forEach(item => {
+                        html += `
+                            <div class="news-item">
+                                <a href="${item.link}" target="_blank">
+                                    ${item.title}
+                                </a>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    newsListElement.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error fetching news:', error);
+                    newsListElement.innerHTML = `<p>Error loading news: ${error.message}. Please try again later.</p>
+                                                 <p>Technical details: ${error.stack}</p>`;
+                });
+        }
+
+        fetchNews();
+        setInterval(fetchNews, 300000); // Refresh every 5 minutes
+    </script>
+
+    <script>
+        function consumeEvent(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            console.log('Key captured: ' + event.key);
+        }
+
+        window.addEventListener('keydown', consumeEvent, true);
+        window.addEventListener('keyup', consumeEvent, true);
+    </script>
+</body>
+</html>

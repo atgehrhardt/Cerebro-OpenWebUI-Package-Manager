@@ -219,7 +219,7 @@ class Filter:
             for d in os.listdir(plugins_dir)
             if os.path.isdir(os.path.join(plugins_dir, d))
         ]
-        print(f"Packages list: {self.packages}")
+        print(f"\n\n\nPackages list: {self.packages}\n\n\n")
 
         self.pkg_launch = "list"
         self.installed_pkgs = self.packages
