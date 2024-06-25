@@ -46,17 +46,35 @@
 
                 const promptText = `Summarize the following information:\n\n${searchResult}`;
 
+                // Send the initial prompt
                 window.parent.postMessage({
                     type: 'input:prompt',
                     text: promptText
                 }, window.location.origin);
 
+                // Submit the initial prompt
                 setTimeout(() => {
                     window.parent.postMessage({
                         type: 'action:submit',
                         text: 'Submitting prompt for summarization'
                     }, window.location.origin);
                 }, 100);
+
+                // Send the "owui run prplxd" command
+                setTimeout(() => {
+                    window.parent.postMessage({
+                        type: 'input:prompt',
+                        text: 'owui run prplxd'
+                    }, window.location.origin);
+                }, 200);
+
+                // Submit the "owui run prplxd" command
+                setTimeout(() => {
+                    window.parent.postMessage({
+                        type: 'action:submit',
+                        text: 'Submitting owui run prplxd command'
+                    }, window.location.origin);
+                }, 300);
 
             } catch (error) {
                 console.error("Error during search:", error);
