@@ -13,21 +13,22 @@
             display: flex;
             justify-content: flex-start;
             align-items: flex-start;
-            min-height: 300vh;
+            min-height: 100vh;
             font-family: 'Arial', sans-serif;
         }
 
         .card {
-            background-color: #2c3e50;
+            background-color: rgba(44, 62, 80, 0.8); /* Added transparency */
             border-radius: 15px;
             padding: 20px;
             width: 900px;
             height: 80vh;
             margin-left: 20px;
             margin-top: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); /* Enhanced box shadow */
             color: white;
             overflow-y: auto;
+            backdrop-filter: blur(10px); /* Added blur effect */
         }
 
         .card h2 {
@@ -46,15 +47,16 @@
         }
 
         .news-item {
-            background-color: #34495e;
+            background-color: rgba(52, 73, 94, 0.7); /* Added transparency */
             border-radius: 10px;
             padding: 15px;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .news-item:hover {
             transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3); /* Enhanced box shadow on hover */
         }
 
         .news-item a {
