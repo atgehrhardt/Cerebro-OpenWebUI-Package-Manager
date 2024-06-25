@@ -1,11 +1,3 @@
-"""
-title: Cerebro Tool Launcher
-author: Andrew Tait Gehrhardt
-author_url: https://github.com/atgehrhardt
-funding_url: https://github.com/open-webui
-version: 0.1.0
-"""
-
 from typing import List, Dict, Optional
 import re
 import uuid
@@ -52,23 +44,27 @@ class Filter:
         messages = body.get("messages", [])
         if messages:
             last_message = messages[-1]["content"]
-            owui_run_match = re.search(r"owui run (\w+)", last_message)
-            if owui_run_match:
-                package_name = owui_run_match.group(1)
+            owui_run_matches = re.finditer(r"owui run (\w+)", last_message)
+
+            new_content = last_message
+            for match in owui_run_matches:
+                package_name = match.group(1)
                 print(f"Detected 'owui run' command for package: {package_name}")
                 if self.handle_package(package_name):
                     if self.file:
-                        messages[-1]["content"] = f"{{{{HTML_FILE_ID_{self.file}}}}}"
+                        replacement = f"{{{{HTML_FILE_ID_{self.file}}}}}"
+                        new_content = new_content.replace(match.group(0), replacement)
+                        self.file = None  # Reset file ID after use
                     else:
                         print(
                             f"Error: File ID not set after handling package {package_name}"
                         )
-                        messages[-1][
-                            "content"
-                        ] = f"Error: Unable to load package {package_name}"
+                        replacement = f"Error: Unable to load package {package_name}"
+                        new_content = new_content.replace(match.group(0), replacement)
                 else:
                     print(f"Error: Failed to handle package {package_name}")
-                    messages[-1][
-                        "content"
-                    ] = f"Error: Failed to load package {package_name}"
+                    replacement = f"Error: Failed to load package {package_name}"
+                    new_content = new_content.replace(match.group(0), replacement)
+
+            messages[-1]["content"] = new_content
         return body
