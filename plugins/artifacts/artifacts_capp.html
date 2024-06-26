@@ -45,16 +45,15 @@
             document.getElementById('artifactContent').textContent = content;
         }
 
-        window.addEventListener('message', function(event) {
-            console.log('Received message:', event.data);
-            if (event.data && event.data.artifact_to_render) {
-                renderArtifact(event.data.artifact_to_render);
-            }
-        }, false);
-
+        // The content is now directly available in the DOM
         window.onload = function() {
             console.log("Artifacts renderer iframe loaded. Origin:", window.location.origin);
-            window.parent.postMessage({ type: 'request:artifact' }, '*');
+            const artifactContent = document.body.textContent.trim();
+            if (artifactContent) {
+                renderArtifact(artifactContent);
+            } else {
+                console.log("No artifact content found");
+            }
         }
     </script>
 </body>
