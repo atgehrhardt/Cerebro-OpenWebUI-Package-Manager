@@ -43,17 +43,21 @@
     <script>
         function renderArtifact(content) {
             document.getElementById('artifactContent').textContent = content;
+            console.log("Rendered content:", content);
         }
 
         function fetchArtifactContent(fileId) {
+            console.log("Fetching artifact content for file ID:", fileId);
             fetch(`/api/file-contents/${fileId}`)
                 .then(response => {
+                    console.log("Fetch response:", response);
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
                     }
                     return response.text();
                 })
                 .then(content => {
+                    console.log("Fetched content:", content);
                     renderArtifact(content);
                 })
                 .catch(error => {
@@ -64,9 +68,11 @@
 
         window.onload = function() {
             console.log("Artifacts renderer iframe loaded. Origin:", window.location.origin);
+            console.log("Full URL:", window.location.href);
             const urlParams = new URLSearchParams(window.location.search);
             const fileId = urlParams.get('file');
             if (fileId) {
+                console.log("File ID found:", fileId);
                 fetchArtifactContent(fileId);
             } else {
                 console.log("No file ID provided");
