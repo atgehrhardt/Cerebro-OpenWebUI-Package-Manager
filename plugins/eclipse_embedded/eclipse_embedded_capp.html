@@ -1,20 +1,17 @@
-
-split this file
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta name="pkg_name" content="template">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Template</title>
+    <title>Eclipse Embedded</title>
     <style>
         body {
             background-color: transparent;
             margin: 0;
             padding: 0;
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             align-items: center;
             min-height: 100vh;
         }
@@ -24,7 +21,7 @@ split this file
             border-radius: 15px;
             padding: 20px;
             width: 300px;
-            margin-right: 20px; /* Moved more to the left */
+            margin-right: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             color: white;
             font-family: Arial, sans-serif;
@@ -40,17 +37,23 @@ split this file
             font-size: 14px;
             line-height: 1.6;
         }
+
+        .iframe-container {
+            flex-grow: 1;
+            height: 100vh;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Template Title</h2>
-        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula.</p>
+    <div class="iframe-container">
+        <iframe src="https://eclipseemu.me/play/" allowfullscreen></iframe>
     </div>
-
-    <script>
-        // YOUR JAVASCRIPT HERE
-    </script>
 
     <script>
         function consumeEvent(event) {
