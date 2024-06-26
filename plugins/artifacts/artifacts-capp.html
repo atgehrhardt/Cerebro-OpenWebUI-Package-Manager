@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="pkg_name" content="artifacts_renderer">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artifacts Renderer</title>
+    <style>
+        body {
+            background-color: transparent;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            font-family: 'Roboto', 'Segoe UI', 'Arial', sans-serif;
+        }
+        .artifact-container {
+            background-color: rgba(44, 62, 80, 0.6);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+        }
+        pre {
+            background-color: rgba(52, 73, 94, 0.5);
+            border-radius: 5px;
+            padding: 15px;
+            overflow-x: auto;
+            color: #ecf0f1;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        code {
+            display: block;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="artifact-container">
+        <pre><code id="artifactContent"></code></pre>
+    </div>
+
+    <script>
+        function renderArtifact(content) {
+            document.getElementById('artifactContent').textContent = content;
+        }
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.artifact_to_render) {
+                renderArtifact(event.data.artifact_to_render);
+            }
+        }, false);
+
+        // Log when the iframe is loaded
+        window.onload = function() {
+            console.log("Artifacts renderer iframe loaded. Origin:", window.location.origin);
+            
+            // Request the artifact to render from the parent window
+            window.parent.postMessage({ type: 'request:artifact' }, '*');
+        }
+    </script>
+</body>
+</html>
