@@ -43,16 +43,13 @@
     <script>
         function renderArtifact(content) {
             document.getElementById('artifactContent').textContent = content;
-            console.log("Rendered content:", content);
         }
 
         function fetchArtifactContent(fileId) {
-            console.log("Fetching artifact content for file ID:", fileId);
-            fetch(`/api/file-contents/${fileId}`)
+            fetch(`/api/v1/files/${fileId}/content`)
                 .then(response => {
-                    console.log("Fetch response:", response);
                     if (!response.ok) {
-                        throw new Error('Network response was not ok');
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     return response.text();
                 })
@@ -62,7 +59,7 @@
                 })
                 .catch(error => {
                     console.error('Error fetching artifact content:', error);
-                    renderArtifact('Error loading artifact content: ' + error.message);
+                    renderArtifact(`Error loading artifact content: ${error.message}`);
                 });
         }
 
