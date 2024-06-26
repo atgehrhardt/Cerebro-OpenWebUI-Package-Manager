@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="pkg_name" content="solitaire">
+    <title>Neon Solitaire</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding-top: 10px;
+        }
+        #solitaire-board {
+            border: 4px solid #00ffff;
+            cursor: default;
+            box-shadow: 0 0 20px #00ffff;
+        }
+        #new-game-btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #ff00ff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            text-shadow: 0 0 5px #ff00ff;
+            box-shadow: 0 0 10px #ff00ff;
+        }
+        #new-game-btn:hover {
+            background-color: #ff60ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="solitaire-board"></canvas>
+        <button id="new-game-btn">New Game</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('solitaire-board');
+        const ctx = canvas.getContext('2d');
+        const newGameBtn = document.getElementById('new-game-btn');
+
+        const CARD_WIDTH = 80;
+        const CARD_HEIGHT = 120;
+        const CARD_SPACING = 25;
+        const FOUNDATION_SPACING = 20;
+
+        canvas.width = 900;
+        canvas.height = 700;
+
+        let deck = [];
+        let tableau = [[], [], [], [], [], [], []];
+        let foundations = [[], [], [], []];
+        let waste = [];
+        let stock = [];
+
+        let draggedCard = null;
+        let draggedPile = null;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        const suits = ['♠', '♥', '♦', '♣'];
+        const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+        function createDeck() {
+            deck = [];
+            for (let suit of suits) {
+                for (let value of values) {
+                    deck.push({ suit, value, faceUp: false });
+                }
+            }
+        }
+
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function dealCards() {
+            for (let i = 0; i < 7; i++) {
+                for (let j = i; j < 7; j++) {
+                    tableau[j].push(deck.pop());
+                }
+                tableau[i][tableau[i].length - 1].faceUp = true;
+            }
+            stock = deck;
+        }
+
+        function drawCard(card, x, y) {
+            ctx.fillStyle = card.faceUp ? '#fff' : '#00ffff';
+            ctx.fillRect(x, y, CARD_WIDTH, CARD_HEIGHT);
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, CARD_WIDTH, CARD_HEIGHT);
+
+            if (card.faceUp) {
+                ctx.fillStyle = ['♥', '♦'].includes(card.suit) ? '#ff0000' : '#000000';
+                ctx.font = '20px Arial';
+                ctx.fillText(card.value, x + 5, y + 20);
+                ctx.fillText(card.suit, x + 5, y + 45);
+                ctx.fillText(card.suit, x + CARD_WIDTH - 20, y + CARD_HEIGHT - 10);
+            }
+        }
+
+        function drawPile(pile, x, y, fanned = false) {
+            pile.forEach((card, index) => {
+                drawCard(card, x, y + (fanned ? index * CARD_SPACING : 0));
+            });
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stock
+            if (stock.length > 0) {
+                drawCard(stock[stock.length - 1], 20, 20);
+            } else {
+                ctx.strokeStyle = '#00ffff';
+                ctx.strokeRect(20, 20, CARD_WIDTH, CARD_HEIGHT);
+            }
+
+            // Draw waste
+            if (waste.length > 0) {
+                drawCard(waste[waste.length - 1], 120, 20);
+            }
+
+            // Draw foundations
+            for (let i = 0; i < 4; i++) {
+                const x = canvas.width - (CARD_WIDTH + FOUNDATION_SPACING) * (4 - i);
+                if (foundations[i].length > 0) {
+                    drawCard(foundations[i][foundations[i].length - 1], x, 20);
+                } else {
+                    ctx.strokeStyle = '#00ffff';
+                    ctx.strokeRect(x, 20, CARD_WIDTH, CARD_HEIGHT);
+                }
+            }
+
+            // Draw tableau
+            for (let i = 0; i < 7; i++) {
+                const x = 20 + (CARD_WIDTH + 20) * i;
+                drawPile(tableau[i], x, 160, true);
+            }
+
+            // Draw dragged cards
+            if (draggedCard) {
+                drawCard(draggedCard, draggedCard.x, draggedCard.y);
+            }
+            if (draggedPile) {
+                draggedPile.forEach((card, index) => {
+                    drawCard(card, card.x, card.y + index * CARD_SPACING);
+                });
+            }
+        }
+
+        function getCardAtPosition(x, y) {
+            // Check waste pile
+            if (waste.length > 0 && x >= 120 && x <= 120 + CARD_WIDTH && y >= 20 && y <= 20 + CARD_HEIGHT) {
+                return { pile: waste, card: waste[waste.length - 1], index: waste.length - 1 };
+            }
+
+            // Check tableau piles
+            for (let i = 0; i < 7; i++) {
+                const pileX = 20 + (CARD_WIDTH + 20) * i;
+                if (x >= pileX && x <= pileX + CARD_WIDTH) {
+                    for (let j = tableau[i].length - 1; j >= 0; j--) {
+                        const cardY = 160 + j * CARD_SPACING;
+                        if (y >= cardY && y <= cardY + CARD_HEIGHT) {
+                            return { pile: tableau[i], card: tableau[i][j], index: j };
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        function canMoveToFoundation(card, foundation) {
+            if (foundation.length === 0) {
+                return card.value === 'A';
+            }
+            const topCard = foundation[foundation.length - 1];
+            return card.suit === topCard.suit && values.indexOf(card.value) === values.indexOf(topCard.value) + 1;
+        }
+
+        function canMoveToTableau(card, tableauPile) {
+            if (tableauPile.length === 0) {
+                return card.value === 'K';
+            }
+            const topCard = tableauPile[tableauPile.length - 1];
+            return ['♠', '♣'].includes(card.suit) !== ['♠', '♣'].includes(topCard.suit) &&
+                values.indexOf(card.value) === values.indexOf(topCard.value) - 1;
+        }
+
+        function startDrag(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const cardInfo = getCardAtPosition(mouseX, mouseY);
+            if (cardInfo && cardInfo.card.faceUp) {
+                draggedCard = cardInfo.card;
+                draggedCard.x = mouseX - CARD_WIDTH / 2;
+                draggedCard.y = mouseY - CARD_HEIGHT / 2;
+                dragStartX = mouseX;
+                dragStartY = mouseY;
+
+                if (cardInfo.pile !== waste) {
+                    draggedPile = cardInfo.pile.slice(cardInfo.index);
+                    draggedPile.forEach((card, index) => {
+                        card.x = draggedCard.x;
+                        card.y = draggedCard.y + index * CARD_SPACING;
+                    });
+                    cardInfo.pile.splice(cardInfo.index);
+                } else {
+                    waste.pop();
+                }
+
+                drawGame();
+            }
+        }
+
+        function drag(e) {
+            if (draggedCard) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const dx = mouseX - dragStartX;
+                const dy = mouseY - dragStartY;
+
+                draggedCard.x += dx;
+                draggedCard.y += dy;
+
+                if (draggedPile) {
+                    draggedPile.forEach((card, index) => {
+                        card.x += dx;
+                        card.y += dy;
+                    });
+                }
+
+                dragStartX = mouseX;
+                dragStartY = mouseY;
+
+                drawGame();
+            }
+        }
+
+        function endDrag() {
+            if (draggedCard) {
+                let placed = false;
+
+                // Check if card can be placed on foundation
+                for (let i = 0; i < 4; i++) {
+                    const x = canvas.width - (CARD_WIDTH + FOUNDATION_SPACING) * (4 - i);
+                    if (draggedCard.x > x && draggedCard.x < x + CARD_WIDTH && draggedCard.y < CARD_HEIGHT + 20) {
+                        if (canMoveToFoundation(draggedCard, foundations[i])) {
+                            foundations[i].push(draggedCard);
+                            placed = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Check if card can be placed on tableau
+                if (!placed) {
+                    for (let i = 0; i < 7; i++) {
+                        const x = 20 + (CARD_WIDTH + 20) * i;
+                        if (draggedCard.x > x && draggedCard.x < x + CARD_WIDTH) {
+                            if (canMoveToTableau(draggedCard, tableau[i])) {
+                                if (draggedPile) {
+                                    tableau[i].push(...draggedPile);
+                                } else {
+                                    tableau[i].push(draggedCard);
+                                }
+                                placed = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // If not placed, return to original position
+                if (!placed) {
+                    if (draggedPile) {
+                        tableau[tableau.indexOf(draggedPile)].push(...draggedPile);
+                    } else {
+                        waste.push(draggedCard);
+                    }
+                }
+
+                draggedCard = null;
+                draggedPile = null;
+                drawGame();
+            }
+        }
+
+        function drawFromStock() {
+            if (stock.length > 0) {
+                const card = stock.pop();
+                card.faceUp = true;
+                waste.push(card);
+            } else if (waste.length > 0) {
+                stock = waste.reverse();
+                stock.forEach(card => card.faceUp = false);
+                waste = [];
+            }
+            drawGame();
+        }
+
+        function startGame() {
+            createDeck();
+            shuffleDeck();
+            dealCards();
+            drawGame();
+        }
+
+        canvas.addEventListener('mousedown', startDrag);
+        canvas.addEventListener('mousemove', drag);
+        canvas.addEventListener('mouseup', endDrag);
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            if (mouseX >= 20 && mouseX <= 20 + CARD_WIDTH && mouseY >= 20 && mouseY <= 20 + CARD_HEIGHT) {
+                drawFromStock();
+            }
+        });
+
+        newGameBtn.addEventListener('click', startGame);
+
+        startGame();
+    </script>
+</body>
+</html>
