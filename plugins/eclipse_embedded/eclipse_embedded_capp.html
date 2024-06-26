@@ -16,13 +16,13 @@
         body {
             display: flex;
             flex-direction: column;
-            min-height: 300vh;
         }
 
         .iframe-container {
             flex-grow: 1;
             position: relative;
-            height: 100%;
+            height: 350vh; /* 3.5 times the viewport height */
+            overflow-y: auto; /* Add scrollbar if content exceeds the container */
         }
 
         iframe {
@@ -32,6 +32,8 @@
             width: 100%;
             height: 100%;
             border: none;
+            transform: scale(1, 3.5); /* Scale vertically by 3.5 */
+            transform-origin: top left;
         }
     </style>
 </head>
