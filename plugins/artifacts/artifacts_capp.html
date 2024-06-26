@@ -45,20 +45,29 @@
             document.getElementById('artifactContent').textContent = content;
         }
 
+        function fetchArtifactContent(fileId) {
+            fetch(`/api/file-contents/${fileId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    renderArtifact(content);
+                })
+                .catch(error => {
+                    console.error('Error fetching artifact content:', error);
+                    renderArtifact('Error loading artifact content: ' + error.message);
+                });
+        }
+
         window.onload = function() {
             console.log("Artifacts renderer iframe loaded. Origin:", window.location.origin);
             const urlParams = new URLSearchParams(window.location.search);
             const fileId = urlParams.get('file');
             if (fileId) {
-                fetch(`/api/file-contents/${fileId}`)
-                    .then(response => response.text())
-                    .then(content => {
-                        renderArtifact(content);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching artifact content:', error);
-                        renderArtifact('Error loading artifact content');
-                    });
+                fetchArtifactContent(fileId);
             } else {
                 console.log("No file ID provided");
                 renderArtifact('No artifact content available');
