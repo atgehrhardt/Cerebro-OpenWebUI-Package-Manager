@@ -6,44 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eclipse Embedded</title>
     <style>
-        body {
-            background-color: transparent;
+        html, body {
             margin: 0;
             padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            min-height: 500vh;
-        }
-
-        .card {
-            background-color: #2c3e50;
-            border-radius: 15px;
-            padding: 20px;
-            width: 300px;
-            margin-right: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            color: white;
-            font-family: Arial, sans-serif;
-        }
-
-        .card h2 {
-            margin-top: 0;
-            border-bottom: 1px solid #34495e;
-            padding-bottom: 10px;
-        }
-
-        .card p {
-            font-size: 14px;
-            line-height: 1.6;
+            flex-direction: column;
         }
 
         .iframe-container {
             flex-grow: 1;
-            height: 100vh;
+            position: relative;
+            height: 100%;
         }
 
         iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             border: none;
