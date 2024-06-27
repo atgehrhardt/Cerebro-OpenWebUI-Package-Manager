@@ -5,84 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Artifacts Renderer</title>
-    <style>
-        body {
-            background-color: transparent;
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            font-family: 'Roboto', 'Segoe UI', 'Arial', sans-serif;
-        }
-        .artifact-container {
-            background-color: rgba(44, 62, 80, 0.6);
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-            backdrop-filter: blur(10px);
-        }
-        pre {
-            background-color: rgba(52, 73, 94, 0.5);
-            border-radius: 5px;
-            padding: 15px;
-            overflow-x: auto;
-            color: #ecf0f1;
-            font-family: 'Courier New', Courier, monospace;
-        }
-        code {
-            display: block;
-            white-space: pre-wrap;
-        }
-    </style>
+    <link rel="stylesheet" href="{style.css}">
 </head>
 <body>
     <div class="artifact-container">
         <pre><code id="artifactContent"></code></pre>
     </div>
-
-    <script>
-        function renderArtifact(content) {
-            document.getElementById('artifactContent').textContent = content;
-        }
-
-        function fetchArtifactContent(fileId) {
-            console.log(`Attempting to fetch content for file ID: ${fileId}`);
-            fetch(`/api/v1/files/${fileId}/content`)
-                .then(response => {
-                    console.log(`Received response with status: ${response.status}`);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.text();
-                })
-                .then(content => {
-                    console.log("Fetched content:", content);
-                    if (content.trim() === '') {
-                        console.warn("Fetched content is empty");
-                        renderArtifact('Fetched content is empty');
-                    } else {
-                        renderArtifact(content);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching artifact content:', error);
-                    renderArtifact(`Error loading artifact content: ${error.message}`);
-                });
-        }
-
-        window.onload = function() {
-            console.log("Artifacts renderer iframe loaded. Origin:", window.location.origin);
-            console.log("Full URL:", window.location.href);
-            const urlParams = new URLSearchParams(window.location.search);
-            const fileId = urlParams.get('file');
-            if (fileId) {
-                console.log("File ID found:", fileId);
-                fetchArtifactContent(fileId);
-            } else {
-                console.log("No file ID provided");
-                renderArtifact('No artifact content available');
-            }
-        }
-    </script>
+    <script src="{app.js}"></script>
 </body>
 </html>

@@ -1,0 +1,45 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    color: #fff;
+    font-family: 'Arial', sans-serif;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+}
+#game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding-top: 10px;
+}
+#brickbreaker-board {
+    border: 4px solid #00ffff;
+    cursor: none;
+    box-shadow: 0 0 20px #00ffff;
+}
+#info {
+    background-color: rgba(0, 255, 255, 0.2);
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    text-shadow: 0 0 5px #00ffff;
+}
+#new-game-btn {
+    margin-top: 10px;
+    padding: 5px 10px;
+    background-color: #ff00ff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    text-shadow: 0 0 5px #ff00ff;
+    box-shadow: 0 0 10px #ff00ff;
+}
+#new-game-btn:hover {
+    background-color: #ff60ff;
+}
