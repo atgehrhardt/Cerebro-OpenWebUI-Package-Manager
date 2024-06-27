@@ -27,7 +27,7 @@ class Filter:
         )
         package_repo_url: str = os.getenv(
             "CEREBRO_PACKAGE_REPO_URL",
-            "https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager-main",
+            "https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager",
         )
 
     def __init__(self):
@@ -150,14 +150,12 @@ class Filter:
             response = requests.get(zip_url)
             response.raise_for_status()
             
-            # get the repo name from the url
+            # Get the repo name from the url
             repo_name = self.valves.package_repo_url.split("/")[-1]
 
             # Extract the specific package directory
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-                package_dir = (
-                    f"{repo_name}/plugins/{package_name}"
-                )
+                package_dir = f"{repo_name}-main/plugins/{package_name}"
                 print(f"Extracting package directory: {package_dir}...")
                 for file in zip_ref.namelist():
                     if file.startswith(package_dir) and file != package_dir + "/":
@@ -169,20 +167,25 @@ class Filter:
             src_dir = os.path.join(UPLOAD_DIR, package_dir)
             dst_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
             
+            # Check if the source directory exists
+            if not os.path.exists(src_dir):
+                raise FileNotFoundError(f"Source directory not found: {src_dir}")
+            
+            # Create the destination directory if it doesn't exist
+            os.makedirs(os.path.dirname(dst_dir), exist_ok=True)
+            
             # Move the package directory to the plugins directory
             shutil.move(src_dir, dst_dir)
             
             # Remove the extracted directory
-            shutil.rmtree(
-                os.path.join(UPLOAD_DIR, f"{repo_name}")
-            )
+            shutil.rmtree(os.path.join(UPLOAD_DIR, f"{repo_name}-main"))
             
             # Loop through all the files in the package directory and create them in the database
             for root, dirs, files in os.walk(dst_dir):
                 for file in files:
                     file_path = os.path.join(root, file)
                     print(f"Creating file: {file_path}")
- 
+
                     # Get the content of each file
                     try:
                         with open(file_path, "r", encoding="utf-8") as f:
@@ -210,9 +213,9 @@ class Filter:
                 for filename, file_id in self.package_files.items():
                     # Replace the filename with the file content url
                     capp_content = capp_content.replace("{"+filename+"}", self.get_file_url(file_id))
-                    # Update the content of the _capp.html file
-                    with open(capp_file, "w", encoding="utf-8") as f:
-                        f.write(capp_content)
+                # Update the content of the _capp.html file
+                with open(capp_file, "w", encoding="utf-8") as f:
+                    f.write(capp_content)
             
             print(f"Package {package_name} installed successfully.")
             self.pkg_launch = "Installed"
