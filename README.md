@@ -29,7 +29,8 @@ The **Cerebro-OpenWebUI-Package-Manager** is a comprehensive package management 
     `owui run <package_name>`
 
 ## Roadmap
- --- Under Construction ---
+- [ ] Package versioning and Update commands
+- [ ] Require version numbers
 
 ## Contributing
 Contributions are welcome! Please follow these steps:
