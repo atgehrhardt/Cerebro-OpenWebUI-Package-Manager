@@ -34,6 +34,7 @@ The **Cerebro-OpenWebUI-Package-Manager** is a comprehensive package management 
 
 ## Bugs
 - [ ] Uninstalling is not properly removing the actual directory from files - Working on fix
+- [ ] `owui list` doesn't work until you have installed at least one package
 
 ## Contributing
 Contributions are welcome! Please follow these steps:
