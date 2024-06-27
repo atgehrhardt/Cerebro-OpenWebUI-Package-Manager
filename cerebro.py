@@ -19,8 +19,15 @@ class Filter:
     SUPPORTED_COMMANDS = ["run", "install", "uninstall", "list"]
 
     class Valves(BaseModel):
+        open_webui_host: str = os.getenv(
+            "OPEN_WEBUI_HOST", "https://localhost:3000"
+        )
         openai_base_url: str = os.getenv(
             "OPENAI_BASE_URL", "http://host.docker.internal:11434/v1"
+        )
+        package_repo_url: str = os.getenv(
+            "CEREBRO_PACKAGE_REPO_URL",
+            "https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager",
         )
 
     def __init__(self):
@@ -30,19 +37,19 @@ class Filter:
         self.selected_model = None
         self.user_id = None
         self.file = None
+        self.package_files = {}
         self.pkg_launch = False
         self.installed_pkgs = []
         self.packages = []
 
     def create_file(
-        self, file_name: str, title: str, content: str, user_id: Optional[str] = None
+        self, package_name, file_name: str, title: str, content: str, user_id: Optional[str] = None
     ):
         user_id = user_id or self.user_id
 
         if not user_id:
             raise ValueError("User ID is required to create a file.")
 
-        package_name = file_name.replace("_capp.html", "")
         base_path = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
         os.makedirs(base_path, exist_ok=True)
 
@@ -51,17 +58,21 @@ class Filter:
 
         try:
             with open(file_path, "w", encoding="utf-8") as f:
+                print(f"Writing file to {file_path}...")
                 f.write(content)
         except IOError as e:
             raise IOError(f"Error writing file to {file_path}: {str(e)}")
 
-        meta = {
-            "source": file_path,
-            "title": title,
-            "content_type": "text/html",
-            "size": os.path.getsize(file_path),
-            "path": file_path,
-        }
+        try:
+            meta = {
+                "source": file_path,
+                "title": title,
+                "content_type": "text/html",
+                "size": os.path.getsize(file_path),
+                "path": file_path,
+            }
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"File {file_path} not found: {str(e)}")
 
         class FileForm(BaseModel):
             id: str
@@ -78,7 +89,11 @@ class Filter:
             os.remove(file_path)
             raise Exception(f"Error inserting file into database: {str(e)}")
 
-    def handle_package(self, url: str, file_name: str):
+
+    def get_file_url(self, file_id: str) -> str:
+        return f"{self.valves.open_webui_host}/api/v1/files/{file_id}/content"
+
+    def handle_package(self, package_name, url: str, file_name: str):
         files = Files.get_files()
         files = [file for file in files if file.user_id == self.user_id]
         files = [file for file in files if file_name in file.filename]
@@ -107,7 +122,7 @@ class Filter:
                 if not self.user_id:
                     raise ValueError("User ID is not set. Cannot create file.")
                 created_file = self.create_file(
-                    file_name, file_name, file_content, self.user_id
+                    package_name, file_name, file_name, file_content, self.user_id
                 )
                 self.file = (
                     created_file.id if hasattr(created_file, "id") else created_file
@@ -123,9 +138,7 @@ class Filter:
         return os.path.exists(package_dir)
 
     def install_package(self, package_name: str):
-        base_url = "https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/tree/main/plugins"
-        raw_url = f"https://raw.githubusercontent.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/main/plugins/{package_name}/{package_name}_capp.html"
-        zip_url = f"https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/archive/refs/heads/main.zip"
+        zip_url = f"{self.valves.package_repo_url}/archive/main.zip"
 
         if self.is_package_installed(package_name):
             print(f"Package {package_name} is already installed.")
@@ -136,39 +149,71 @@ class Filter:
             # Download the zip file
             response = requests.get(zip_url)
             response.raise_for_status()
+            
+            # get the repo name from the url
+            repo_name = self.valves.package_repo_url.split("/")[-1]
 
             # Extract the specific package directory
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
                 package_dir = (
-                    f"Cerebro-OpenWebUI-Package-Manager-main/plugins/{package_name}"
+                    f"{repo_name}/plugins/{package_name}"
                 )
+                print(f"Extracting package directory: {package_dir}...")
                 for file in zip_ref.namelist():
                     if file.startswith(package_dir) and file != package_dir + "/":
+                        # Extract the package files
+                        print(f"Extracting {file}...")
                         zip_ref.extract(file, UPLOAD_DIR)
-
-            # Move the extracted directory to the correct location
+                        
+            # Get the source directory
             src_dir = os.path.join(UPLOAD_DIR, package_dir)
-            dest_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
-            shutil.move(src_dir, dest_dir)
-
-            # Clean up temporary files
+            dst_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
+            
+            # Move the package directory to the plugins directory
+            shutil.move(src_dir, dst_dir)
+            
+            # Remove the extracted directory
             shutil.rmtree(
-                os.path.join(UPLOAD_DIR, "Cerebro-OpenWebUI-Package-Manager-main")
+                os.path.join(UPLOAD_DIR, f"{repo_name}")
             )
-
-            # Get the content of the main HTML file
-            html_file_path = os.path.join(dest_dir, f"{package_name}_capp.html")
-            with open(html_file_path, "r", encoding="utf-8") as f:
-                file_content = f.read()
-
-            # Create file in the database
-            created_file = self.create_file(
-                f"{package_name}_capp.html",
-                f"{package_name}_capp.html",
-                file_content,
-                self.user_id,
-            )
-            self.file = created_file.id if hasattr(created_file, "id") else created_file
+            
+            # Loop through all the files in the package directory and create them in the database
+            for root, dirs, files in os.walk(dst_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    print(f"Creating file: {file_path}")
+ 
+                    # Get the content of each file
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            file_content = f.read()
+                        
+                        filename = os.path.basename(file_path)
+                        # Create file in the database
+                        created_file = self.create_file(
+                            package_name,
+                            f"{file_path}",
+                            f"{file_path}",
+                            file_content,
+                            self.user_id,
+                        )
+                        
+                        self.package_files[filename] = created_file.id if hasattr(created_file, "id") else created_file
+                    except Exception as e:
+                        print(f"Error creating file: {str(e)}")
+                        raise Exception(f"Error creating file: {str(e)}")
+            
+            # Update the contents of _capp.html file
+            capp_file = os.path.join(dst_dir, f"{package_name}_capp.html")
+            with open(capp_file, "r", encoding="utf-8") as f:
+                capp_content = f.read()
+                for filename, file_id in self.package_files.items():
+                    # Replace the filename with the file content url
+                    capp_content = capp_content.replace("{"+filename+"}", self.get_file_url(file_id))
+                    # Update the content of the _capp.html file
+                    with open(capp_file, "w", encoding="utf-8") as f:
+                        f.write(capp_content)
+            
             print(f"Package {package_name} installed successfully.")
             self.pkg_launch = "Installed"
 
@@ -273,7 +318,7 @@ class Filter:
                             self.pkg_launch = "none"
                             return body
 
-                        self.handle_package(url, file_name)
+                        self.handle_package(package_name, url, file_name)
                         self.pkg_launch = True
                         return body
 
