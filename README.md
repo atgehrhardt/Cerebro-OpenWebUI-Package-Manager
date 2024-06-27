@@ -23,7 +23,7 @@ The **Cerebro-OpenWebUI-Package-Manager** is a comprehensive package management 
     `owui install <package_name>`
 
 - **Remove a package**: 
-    `owui install <package_name>`
+    `owui uninstall <package_name>`
 
 - **Run a package**: 
     `owui run <package_name>`
