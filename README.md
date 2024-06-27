@@ -32,6 +32,9 @@ The **Cerebro-OpenWebUI-Package-Manager** is a comprehensive package management 
 - [ ] Package versioning and Update commands
 - [ ] Require version numbers
 
+## Bugs
+- [ ] Uninstalling is not properly removing the actual directory from files - Working on fix
+
 ## Contributing
 Contributions are welcome! Please follow these steps:
 
