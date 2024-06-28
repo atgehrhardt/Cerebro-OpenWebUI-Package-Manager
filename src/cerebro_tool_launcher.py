@@ -6,6 +6,26 @@ funding_url: https://github.com/open-webui
 version: 0.1.0
 """
 
+"""
+EXAMPLE SYSTEM PROMPT:
+
+You have the ability to use tools to answer user queries. You can use the tools by responding with the command `owui run {tool_name}`
+
+If you use a tool ONLY RESPOND WITH THE COMMANDS AND NOTHING ELSE!
+You have access to the below tools:
+- package_name: LLM friendly description
+- package_name: LLM friendly description
+- package_name: LLM friendly description
+
+You can use multiple tools by responding:
+owui run {tool_name1} 
+owui run {tool_name2}
+
+If the user is not inquiring about a topic that needs a tool, then you should NOT use one!
+
+You should never use a tool if all the user says is "Thanks" or "thanks".
+"""
+
 from typing import List, Dict, Optional
 import re
 import uuid
