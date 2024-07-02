@@ -3,7 +3,7 @@ title: Cerebro Package Manager
 author: Andrew Tait Gehrhardt
 author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager
 funding_url: https://github.com/open-webui
-version: 0.1.3
+version: 0.1.7
 """
 
 from typing import List, Union, Generator, Iterator, Optional
