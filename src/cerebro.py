@@ -17,6 +17,7 @@ import re
 import zipfile
 import io
 import shutil
+from urllib.parse import urlparse, urlunparse
 from utils.misc import get_last_user_message
 from apps.webui.models.files import Files
 
@@ -24,7 +25,7 @@ from config import UPLOAD_DIR
 
 
 class Filter:
-    SUPPORTED_COMMANDS = ["run", "install", "uninstall", "list"]
+    SUPPORTED_COMMANDS = ["run", "install", "uninstall", "list", "update"]
 
     class Valves(BaseModel):
         open_webui_host: str = os.getenv(
@@ -36,7 +37,7 @@ class Filter:
         )
         package_repo_url: str = os.getenv(
             "CEREBRO_PACKAGE_REPO_URL",
-            "https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager",
+            "https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/tree/main/plugins",
         )
 
     def __init__(self):
@@ -150,8 +151,40 @@ class Filter:
         package_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
         return os.path.exists(package_dir)
 
+    def get_zip_url_from_tree_url(self, tree_url: str) -> str:
+        parsed_url = urlparse(tree_url)
+        path_parts = parsed_url.path.split("/")
+
+        if "tree" in path_parts:
+            tree_index = path_parts.index("tree")
+            repo_path = "/".join(path_parts[:tree_index])
+            branch = path_parts[tree_index + 1]
+
+            # Construct the raw zip URL
+            zip_path = f"{repo_path}/archive/{branch}.zip"
+            return urlunparse(parsed_url._replace(path=zip_path))
+        else:
+            # If 'tree' is not in the URL, assume it's the main branch
+            return f"{tree_url}/archive/main.zip"
+
+    def get_subdirectory_from_tree_url(self, tree_url: str) -> str:
+        parsed_url = urlparse(tree_url)
+        path_parts = parsed_url.path.split("/")
+
+        if "tree" in path_parts:
+            tree_index = path_parts.index("tree")
+            return "/".join(path_parts[tree_index + 2 :])
+        else:
+            return ""
+
     def install_package(self, package_name: str):
-        zip_url = f"{self.valves.package_repo_url}/archive/main.zip"
+        tree_url = self.valves.package_repo_url
+        zip_url = self.get_zip_url_from_tree_url(tree_url)
+        subdirectory = self.get_subdirectory_from_tree_url(tree_url)
+
+        print(f"Tree URL: {tree_url}")
+        print(f"Zip URL: {zip_url}")
+        print(f"Subdirectory: {subdirectory}")
 
         if self.is_package_installed(package_name):
             print(f"Package {package_name} is already installed.")
@@ -160,25 +193,48 @@ class Filter:
 
         try:
             # Download the zip file
+            print(f"Downloading zip file from: {zip_url}")
             response = requests.get(zip_url)
             response.raise_for_status()
 
-            # Get the repo name from the url
-            repo_name = self.valves.package_repo_url.split("/")[-1]
+            # Get the repo name and branch from the url
+            repo_name = tree_url.split("/")[-4]  # Adjusted to get correct repo name
+            branch = tree_url.split("/")[-2]  # Adjusted to get correct branch name
 
             # Extract the specific package directory
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-                package_dir = f"{repo_name}-main/plugins/{package_name}"
-                print(f"Extracting package directory: {package_dir}...")
-                for file in zip_ref.namelist():
-                    if file.startswith(package_dir) and file != package_dir + "/":
-                        # Extract the package files
+                # List all files in the zip
+                all_files = zip_ref.namelist()
+                print(f"Files in zip: {all_files}")
+
+                # Try to find the package directory
+                package_dir = None
+                for file in all_files:
+                    if file.endswith(
+                        f"{subdirectory}/{package_name}/"
+                    ) or file.endswith(f"{subdirectory}/{package_name}"):
+                        package_dir = file
+                        break
+
+                if not package_dir:
+                    raise FileNotFoundError(
+                        f"Package directory for {package_name} not found in zip file"
+                    )
+
+                print(f"Found package directory: {package_dir}")
+
+                # Extract the package files
+                for file in all_files:
+                    if file.startswith(package_dir):
                         print(f"Extracting {file}...")
                         zip_ref.extract(file, UPLOAD_DIR)
 
             # Get the source directory
             src_dir = os.path.join(UPLOAD_DIR, package_dir)
             dst_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
+
+            print(f"Source directory: {src_dir}")
+            print(f"Destination directory: {dst_dir}")
 
             # Check if the source directory exists
             if not os.path.exists(src_dir):
@@ -191,7 +247,8 @@ class Filter:
             shutil.move(src_dir, dst_dir)
 
             # Remove the extracted directory
-            shutil.rmtree(os.path.join(UPLOAD_DIR, f"{repo_name}-main"))
+            extracted_dir = os.path.join(UPLOAD_DIR, f"{repo_name}-{branch}")
+            shutil.rmtree(extracted_dir)
 
             # Loop through all the files in the package directory and create them in the database
             for root, dirs, files in os.walk(dst_dir):
@@ -225,16 +282,19 @@ class Filter:
 
             # Update the contents of _capp.html file
             capp_file = os.path.join(dst_dir, f"{package_name}_capp.html")
-            with open(capp_file, "r", encoding="utf-8") as f:
-                capp_content = f.read()
-                for filename, file_id in self.package_files.items():
-                    # Replace the filename with the file content url
-                    capp_content = capp_content.replace(
-                        "{" + filename + "}", self.get_file_url(file_id)
-                    )
-                # Update the content of the _capp.html file
-                with open(capp_file, "w", encoding="utf-8") as f:
-                    f.write(capp_content)
+            if os.path.exists(capp_file):
+                with open(capp_file, "r", encoding="utf-8") as f:
+                    capp_content = f.read()
+                    for filename, file_id in self.package_files.items():
+                        # Replace the filename with the file content url
+                        capp_content = capp_content.replace(
+                            "{" + filename + "}", self.get_file_url(file_id)
+                        )
+                    # Update the content of the _capp.html file
+                    with open(capp_file, "w", encoding="utf-8") as f:
+                        f.write(capp_content)
+            else:
+                print(f"Warning: {capp_file} not found. Skipping content update.")
 
             print(f"Package {package_name} installed successfully.")
             self.pkg_launch = "Installed"
@@ -243,6 +303,27 @@ class Filter:
             print(f"Error installing package {package_name}: {str(e)}")
             raise Exception(f"Error installing package {package_name}: {str(e)}")
 
+    def update_package(self, package_name: str):
+        if not self.is_package_installed(package_name):
+            print(f"Package {package_name} is not installed. Cannot update.")
+            self.pkg_launch = "Not Installed"
+            return
+
+        print(f"Updating package {package_name}...")
+        try:
+            # Uninstall the package
+            self.uninstall_package(package_name)
+
+            # Install the package again
+            self.install_package(package_name)
+
+            print(f"Package {package_name} updated successfully.")
+            self.pkg_launch = "Updated"
+        except Exception as e:
+            print(f"Error updating package {package_name}: {str(e)}")
+            self.pkg_launch = "Update Failed"
+            raise Exception(f"Error updating package {package_name}: {str(e)}")
+
     def uninstall_package(self, package_name: str):
         package_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
         if not os.path.exists(package_dir):
@@ -250,26 +331,88 @@ class Filter:
             return
 
         try:
-            for root, dirs, files in os.walk(package_dir, topdown=False):
-                for file in files:
-                    os.remove(os.path.join(root, file))
-                for dir in dirs:
-                    os.rmdir(os.path.join(root, dir))
-            os.rmdir(package_dir)
+            # Get all files
+            all_files = Files.get_files()
 
-            # Remove the file from the database
-            files = Files.get_files()
-            files = [file for file in files if file.user_id == self.user_id]
-            files = [
-                file for file in files if f"{package_name}_capp.html" in file.filename
+            # Filter files related to the package
+            files_to_delete = [
+                file
+                for file in all_files
+                if file.user_id == self.user_id
+                and f"/cerebro/plugins/{package_name}/" in file.filename
             ]
-            if files:
-                Files.delete_file_by_id(files[0].id)
+
+            # Delete files from the database
+            deleted_count = 0
+            for file in files_to_delete:
+                if Files.delete_file_by_id(file.id):
+                    deleted_count += 1
+                print(f"Deleted file: {file.filename}")
+
+            print(f"Deleted {deleted_count} files from the database.")
+
+            # Remove files and directories from the file system
+            if os.path.exists(package_dir):
+                for root, dirs, files in os.walk(package_dir, topdown=False):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        try:
+                            os.remove(file_path)
+                            print(f"Removed file: {file_path}")
+                        except Exception as e:
+                            print(f"Error removing file {file_path}: {str(e)}")
+                    for dir in dirs:
+                        dir_path = os.path.join(root, dir)
+                        try:
+                            os.rmdir(dir_path)
+                            print(f"Removed directory: {dir_path}")
+                        except Exception as e:
+                            print(f"Error removing directory {dir_path}: {str(e)}")
+                try:
+                    os.rmdir(package_dir)
+                    print(f"Removed package directory: {package_dir}")
+                except Exception as e:
+                    print(f"Error removing package directory {package_dir}: {str(e)}")
+            else:
+                print(f"Package directory {package_dir} does not exist.")
 
             print(f"Package {package_name} uninstalled successfully.")
             self.pkg_launch = "Uninstalled"
         except Exception as e:
-            raise Exception(f"Error deleting package {package_name}: {str(e)}")
+            raise Exception(f"Error uninstalling package {package_name}: {str(e)}")
+
+    def list_packages(self, body: dict) -> List[str]:
+        if not self.user_id:
+            print("User ID is not set. Cannot list packages.")
+            return []
+
+        plugins_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins")
+        if not os.path.exists(plugins_dir):
+            print("Plugins directory does not exist.")
+            return []
+
+        self.packages = [
+            d
+            for d in os.listdir(plugins_dir)
+            if os.path.isdir(os.path.join(plugins_dir, d))
+        ]
+
+        # Update installed packages based on both directory existence and database entries
+        all_files = Files.get_files()
+        db_packages = set(
+            [
+                file.filename.split("/cerebro/plugins/")[1].split("/")[0]
+                for file in all_files
+                if file.user_id == self.user_id and "/cerebro/plugins/" in file.filename
+            ]
+        )
+
+        self.installed_pkgs = list(set(self.packages) | db_packages)
+
+        print(f"\n\n\nPackages list: {self.installed_pkgs}\n\n\n")
+
+        self.pkg_launch = "list"
+        return self.installed_pkgs
 
     def list_packages(self, body: dict) -> List[str]:
         if not self.user_id:
@@ -366,6 +509,16 @@ class Filter:
                     self.list_packages(body)
                     print(f"\n\n\nReturning body: {body}\n\n\n")
                     return body
+
+                elif last_message.startswith("owui update"):
+                    command_parts = last_message.split()
+                    print(f"Command parts: {command_parts}")
+                    if len(command_parts) >= 3:
+                        package_name = " ".join(command_parts[2:])
+                        print(f"Updating package: {package_name}")
+                        self.update_package(package_name)
+                        return body
+
         return body
 
     def outlet(self, body: dict, __user__: Optional[dict] = None) -> dict:
@@ -385,6 +538,12 @@ class Filter:
             body["messages"][-1]["content"] = "Package Already Installed"
         elif self.pkg_launch == "Uninstalled":
             body["messages"][-1]["content"] = "Package Uninstalled"
+        elif self.pkg_launch == "Updated":
+            body["messages"][-1]["content"] = "Package Updated Successfully"
+        elif self.pkg_launch == "Update Failed":
+            body["messages"][-1]["content"] = "Package Update Failed"
+        elif self.pkg_launch == "Not Installed":
+            body["messages"][-1]["content"] = "Package Not Installed. Cannot Update."
         elif self.pkg_launch == "list":
             body["messages"][-1]["content"] = (
                 "--- INSTALLED PACKAGES--- \n" + "\n".join(self.installed_pkgs)
