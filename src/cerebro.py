@@ -41,7 +41,6 @@ class Filter:
         )
 
     def __init__(self):
-        self.file_handler = True
         self.valves = self.Valves()
         self.last_created_file = None
         self.selected_model = None
