@@ -3,7 +3,7 @@ title: Cerebro Package Manager
 author: Andrew Tait Gehrhardt
 author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager
 funding_url: https://github.com/open-webui
-version: 0.2.0
+version: 0.2.1
 
 ! ! ! 
 IMPORTANT: THIS MUST BE THE SECOND TO LAST PRIORITY IN YOUR CHAIN. SET PRIORITY HIGHER THAN ALL 
@@ -294,11 +294,13 @@ class Filter:
                 for file in all_files:
                     if file.startswith(package_dir):
                         print(f"Extracting {file}...")
-                        zip_ref.extract(file, UPLOAD_DIR)
+                        zip_ref.extract(file, UPLOAD_DIR)  # Use UPLOAD_DIR here
 
             # Get the source directory
-            src_dir = os.path.join(UPLOAD_DIR, package_dir)
-            dst_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
+            src_dir = os.path.join(UPLOAD_DIR, package_dir)  # Use UPLOAD_DIR here
+            dst_dir = os.path.join(
+                UPLOAD_DIR, "cerebro", "plugins", package_name
+            )  # Use UPLOAD_DIR here
 
             print(f"Source directory: {src_dir}")
             print(f"Destination directory: {dst_dir}")
@@ -314,7 +316,9 @@ class Filter:
             shutil.move(src_dir, dst_dir)
 
             # Remove the extracted directory
-            extracted_dir = os.path.join(UPLOAD_DIR, f"{repo_name}-{branch}")
+            extracted_dir = os.path.join(
+                UPLOAD_DIR, f"{repo_name}-{branch}"
+            )  # Use UPLOAD_DIR here
             shutil.rmtree(extracted_dir)
 
             # Loop through all the files in the package directory and create them in the database
@@ -370,10 +374,13 @@ class Filter:
                 with open(tool_file, "r", encoding="utf-8") as f:
                     tool_content = f.read()
 
-                # Create a ToolForm instance
+                # Prepend "cer_" to the tool name
+                cer_tool_name = f"cer_{package_name}"
+
+                # Create a ToolForm instance with the modified name
                 tool_form = ToolForm(
                     id=str(uuid.uuid4()),
-                    name=package_name,
+                    name=cer_tool_name,  # Use the modified name here
                     content=tool_content,
                     meta=ToolMeta(description=f"Tool for {package_name}"),
                 )
@@ -381,7 +388,9 @@ class Filter:
                 # Insert the tool
                 tool = Tools.insert_new_tool(self.user_id, tool_form, [])
                 if tool:
-                    print(f"Tool for package {package_name} installed successfully.")
+                    print(
+                        f"Tool for package {package_name} installed successfully as {cer_tool_name}."
+                    )
                 else:
                     print(f"Failed to install tool for package {package_name}.")
 
@@ -442,40 +451,31 @@ class Filter:
 
             # Remove files and directories from the file system
             if os.path.exists(package_dir):
-                for root, dirs, files in os.walk(package_dir, topdown=False):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        try:
-                            os.remove(file_path)
-                            print(f"Removed file: {file_path}")
-                        except Exception as e:
-                            print(f"Error removing file {file_path}: {str(e)}")
-                    for dir in dirs:
-                        dir_path = os.path.join(root, dir)
-                        try:
-                            os.rmdir(dir_path)
-                            print(f"Removed directory: {dir_path}")
-                        except Exception as e:
-                            print(f"Error removing directory {dir_path}: {str(e)}")
-                try:
-                    os.rmdir(package_dir)
-                    print(f"Removed package directory: {package_dir}")
-                except Exception as e:
-                    print(f"Error removing package directory {package_dir}: {str(e)}")
+                shutil.rmtree(package_dir)
+                print(f"Removed package directory: {package_dir}")
             else:
                 print(f"Package directory {package_dir} does not exist.")
 
             # Uninstall tool
             tools = Tools.get_tools()
-            tool = next((t for t in tools if t.name == package_name), None)
+            tool_name = (
+                f"cer_{package_name}"  # Look for the tool with the "cer_" prefix
+            )
+            tool = next((t for t in tools if t.name == tool_name), None)
 
             if tool:
                 if Tools.delete_tool_by_id(tool.id):
-                    print(f"Tool for package {package_name} uninstalled successfully.")
+                    print(
+                        f"Tool {tool_name} for package {package_name} uninstalled successfully."
+                    )
                 else:
-                    print(f"Failed to uninstall tool for package {package_name}.")
+                    print(
+                        f"Failed to uninstall tool {tool_name} for package {package_name}."
+                    )
             else:
-                print(f"No tool found for package {package_name}.")
+                print(
+                    f"No tool found with name {tool_name} for package {package_name}."
+                )
 
             print(f"Package {package_name} uninstalled successfully.")
             self.pkg_launch = "Uninstalled"
