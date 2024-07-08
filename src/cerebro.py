@@ -3,11 +3,16 @@ title: Cerebro Package Manager
 author: Andrew Tait Gehrhardt
 author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager
 funding_url: https://github.com/open-webui
-version: 0.1.7
+version: 0.2.0
+
+! ! ! 
+IMPORTANT: THIS MUST BE THE SECOND TO LAST PRIORITY IN YOUR CHAIN. SET PRIORITY HIGHER THAN ALL 
+           OTHER FUNCTIONS EXCEPT FOR THE CEREBRO TOOL LAUNCHER 
+! ! !
 """
 
 from typing import List, Union, Generator, Iterator, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import requests
 import os
 import json
@@ -20,6 +25,7 @@ import shutil
 from urllib.parse import urlparse, urlunparse
 from utils.misc import get_last_user_message
 from apps.webui.models.files import Files
+from apps.webui.models.tools import Tools, ToolForm, ToolMeta
 
 from config import UPLOAD_DIR
 
@@ -28,6 +34,9 @@ class Filter:
     SUPPORTED_COMMANDS = ["run", "install", "uninstall", "list", "update"]
 
     class Valves(BaseModel):
+        priority: int = Field(
+            default=1, description="Priority level for the filter operations."
+        )
         open_webui_host: str = os.getenv(
             "OPEN_WEBUI_HOST",
             "https://192.168.1.154",  # If using Nginx this MUST be your server ip address https://192.168.1.xxx
@@ -50,6 +59,66 @@ class Filter:
         self.pkg_launch = False
         self.installed_pkgs = []
         self.packages = []
+
+    def check_tool_exists(self, tool_name: str) -> bool:
+        tool_file = os.path.join(
+            UPLOAD_DIR, "cerebro", "plugins", tool_name, f"{tool_name}_capp.py"
+        )
+        return os.path.exists(tool_file)
+
+    def uninstall_tool(self, tool_name: str):
+        if not self.check_tool_exists(tool_name):
+            print(f"Tool {tool_name} does not exist.")
+            return
+
+        try:
+            # Get the tool by name
+            tools = Tools.get_tools()
+            tool = next((t for t in tools if t.name == tool_name), None)
+
+            if tool:
+                # Delete the tool from the database
+                if Tools.delete_tool_by_id(tool.id):
+                    print(
+                        f"Tool {tool_name} uninstalled successfully from the database."
+                    )
+                else:
+                    print(f"Failed to uninstall tool {tool_name} from the database.")
+            else:
+                print(f"Tool {tool_name} not found in the database.")
+
+            # Remove the tool file
+            tool_file = os.path.join(
+                UPLOAD_DIR, "cerebro", "plugins", tool_name, f"{tool_name}_capp.py"
+            )
+            if os.path.exists(tool_file):
+                os.remove(tool_file)
+                print(f"Removed tool file: {tool_file}")
+
+            self.pkg_launch = "Tool Uninstalled"
+        except Exception as e:
+            raise Exception(f"Error uninstalling tool {tool_name}: {str(e)}")
+
+    def update_tool(self, tool_name: str):
+        if not self.check_tool_exists(tool_name):
+            print(f"Tool {tool_name} does not exist. Cannot update.")
+            self.pkg_launch = "Tool Not Installed"
+            return
+
+        print(f"Updating tool {tool_name}...")
+        try:
+            # Uninstall the tool
+            self.uninstall_tool(tool_name)
+
+            # Install the tool again
+            self.install_package(tool_name)  # This will install both package and tool
+
+            print(f"Tool {tool_name} updated successfully.")
+            self.pkg_launch = "Tool Updated"
+        except Exception as e:
+            print(f"Error updating tool {tool_name}: {str(e)}")
+            self.pkg_launch = "Tool Update Failed"
+            raise Exception(f"Error updating tool {tool_name}: {str(e)}")
 
     def create_file(
         self,
@@ -197,12 +266,11 @@ class Filter:
             response.raise_for_status()
 
             # Get the repo name and branch from the url
-            repo_name = tree_url.split("/")[-4]  # Adjusted to get correct repo name
-            branch = tree_url.split("/")[-2]  # Adjusted to get correct branch name
+            repo_name = tree_url.split("/")[-4]
+            branch = tree_url.split("/")[-2]
 
             # Extract the specific package directory
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-                # List all files in the zip
                 all_files = zip_ref.namelist()
                 print(f"Files in zip: {all_files}")
 
@@ -289,11 +357,33 @@ class Filter:
                         capp_content = capp_content.replace(
                             "{" + filename + "}", self.get_file_url(file_id)
                         )
-                    # Update the content of the _capp.html file
-                    with open(capp_file, "w", encoding="utf-8") as f:
-                        f.write(capp_content)
+                # Update the content of the _capp.html file
+                with open(capp_file, "w", encoding="utf-8") as f:
+                    f.write(capp_content)
             else:
                 print(f"Warning: {capp_file} not found. Skipping content update.")
+
+            # Check for and install tool
+            tool_file = os.path.join(dst_dir, f"{package_name}_capp.py")
+            if os.path.exists(tool_file):
+                print(f"Installing tool for package: {package_name}")
+                with open(tool_file, "r", encoding="utf-8") as f:
+                    tool_content = f.read()
+
+                # Create a ToolForm instance
+                tool_form = ToolForm(
+                    id=str(uuid.uuid4()),
+                    name=package_name,
+                    content=tool_content,
+                    meta=ToolMeta(description=f"Tool for {package_name}"),
+                )
+
+                # Insert the tool
+                tool = Tools.insert_new_tool(self.user_id, tool_form, [])
+                if tool:
+                    print(f"Tool for package {package_name} installed successfully.")
+                else:
+                    print(f"Failed to install tool for package {package_name}.")
 
             print(f"Package {package_name} installed successfully.")
             self.pkg_launch = "Installed"
@@ -310,10 +400,10 @@ class Filter:
 
         print(f"Updating package {package_name}...")
         try:
-            # Uninstall the package
+            # Uninstall the package (which will also uninstall the tool)
             self.uninstall_package(package_name)
 
-            # Install the package again
+            # Install the package again (which will also install the tool)
             self.install_package(package_name)
 
             print(f"Package {package_name} updated successfully.")
@@ -374,6 +464,18 @@ class Filter:
                     print(f"Error removing package directory {package_dir}: {str(e)}")
             else:
                 print(f"Package directory {package_dir} does not exist.")
+
+            # Uninstall tool
+            tools = Tools.get_tools()
+            tool = next((t for t in tools if t.name == package_name), None)
+
+            if tool:
+                if Tools.delete_tool_by_id(tool.id):
+                    print(f"Tool for package {package_name} uninstalled successfully.")
+                else:
+                    print(f"Failed to uninstall tool for package {package_name}.")
+            else:
+                print(f"No tool found for package {package_name}.")
 
             print(f"Package {package_name} uninstalled successfully.")
             self.pkg_launch = "Uninstalled"
@@ -453,7 +555,6 @@ class Filter:
         messages = body.get("messages", [])
         if messages:
             last_message = messages[-1]["content"]
-            print(f"Last message: {last_message}")
 
             if last_message.startswith("owui "):
                 command_parts = last_message.split()
@@ -461,11 +562,9 @@ class Filter:
                     command = command_parts[1]
                     if command not in self.SUPPORTED_COMMANDS:
                         self.pkg_launch = "invalid"
-                        return body
 
                 if last_message.startswith("owui run"):
                     command_parts = last_message.split()
-                    print(f"Command parts: {command_parts}")
                     if len(command_parts) >= 3:
                         _, _, package_name = command_parts[:3]
                         url = (
@@ -480,43 +579,33 @@ class Filter:
 
                         if not self.check_package_exists(file_name):
                             self.pkg_launch = "none"
-                            return body
 
                         self.handle_package(package_name, url, file_name)
                         self.pkg_launch = True
-                        return body
 
                 elif last_message.startswith("owui install"):
                     command_parts = last_message.split()
-                    print(f"Command parts: {command_parts}")
                     if len(command_parts) >= 3:
                         package_name = command_parts[2]
                         print(f"Installing package: {package_name}")
                         self.install_package(package_name)
-                        return body
 
                 elif last_message.startswith("owui uninstall"):
                     command_parts = last_message.split()
-                    print(f"Command parts: {command_parts}")
                     if len(command_parts) >= 3:
                         package_name = " ".join(command_parts[2:])
                         print(f"Uninstalling package: {package_name}")
                         self.uninstall_package(package_name)
-                        return body
 
                 elif last_message.startswith("owui list"):
                     self.list_packages(body)
-                    print(f"\n\n\nReturning body: {body}\n\n\n")
-                    return body
 
                 elif last_message.startswith("owui update"):
                     command_parts = last_message.split()
-                    print(f"Command parts: {command_parts}")
                     if len(command_parts) >= 3:
                         package_name = " ".join(command_parts[2:])
                         print(f"Updating package: {package_name}")
                         self.update_package(package_name)
-                        return body
 
         return body
 
@@ -558,4 +647,5 @@ class Filter:
 
         self.pkg_launch = False
 
+        print("\n\n\n")
         return body
