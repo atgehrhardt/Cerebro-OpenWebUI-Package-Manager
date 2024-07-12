@@ -4,22 +4,25 @@ from pydantic import BaseModel
 from typing import Optional, Union, Generator, Iterator
 from apps.webui.models.files import Files
 
+from config import UPLOAD_DIR
+
+
 class Tools:
     """
-    A tool for embedding a specific applet in the chat.
-    Use this tool when you need to display the [YOUR_PACKAGE_NAME] applet in the conversation.
+    A tool for launching the gui applet Tetris
+    Use this tool when you need to display this applet in the conversation.
     The applet must be previously installed using the package manager.
     """
 
     def __init__(self):
-        self.package_name = "testing"  
+        self.package_name = "testing"
         self.applet_file_id = None
 
     async def run(
-        self, 
-        __user__: Optional[dict] = None, 
+        self,
+        __user__: Optional[dict] = None,
         __event_emitter__: Optional[callable] = None,
-        __event_call__: Optional[callable] = None
+        __event_call__: Optional[callable] = None,
     ) -> str:
         """
         Embed the testing applet in the chat.
@@ -28,7 +31,7 @@ class Tools:
         :param __event_call__: Function to call for the final output.
         :return: An empty string, as the final output is handled by __event_call__.
         """
-        
+
         if not __user__ or "id" not in __user__:
             return "Error: User ID not provided"
 
@@ -36,19 +39,24 @@ class Tools:
             return "Error: Event emitter or event call not provided"
 
         user_id = __user__["id"]
-        
+
         # Emit initial message
         await __event_emitter__(
             {"type": "replace", "data": {"content": "Searching for applet file..."}}
         )
-        await asyncio.sleep(1)
 
-        expected_filename = f"/cerebro/plugins/{self.package_name}/{self.package_name}_capp.html"
-        
+        expected_filename = f"{UPLOAD_DIR}/cerebro/plugins/{self.package_name}/{self.package_name}_capp.html"
+
         all_files = Files.get_files()
-        matching_file = next((file for file in all_files 
-                              if file.user_id == user_id and file.filename == expected_filename), None)
-        
+        matching_file = next(
+            (
+                file
+                for file in all_files
+                if file.user_id == user_id and file.filename == expected_filename
+            ),
+            None,
+        )
+
         if not matching_file:
             error_message = f"Error: Applet file for {self.package_name} not found. Make sure the package is installed."
             await __event_emitter__(
@@ -58,26 +66,19 @@ class Tools:
             return ""
 
         self.applet_file_id = matching_file.id
-        
+
         # Simulate a loading process
         loading_messages = [
-            "Applet file found...",
-            "Preparing to embed...",
-            "Embedding applet...",
-            "Almost there...",
+            "Applet file found: Loading",
         ]
 
         for message in loading_messages:
-            await __event_emitter__(
-                {"type": "replace", "data": {"content": message}}
-            )
+            await __event_emitter__({"type": "replace", "data": {"content": message}})
             await asyncio.sleep(1)
 
         # Finally, replace with the actual applet embed
         final_message = f"{{{{HTML_FILE_ID_{self.applet_file_id}}}}}"
-        await __event_emitter__(
-            {"type": "replace", "data": {"content": final_message}}
-        )
+        await __event_emitter__({"type": "replace", "data": {"content": final_message}})
 
         # Use __event_call__ to set the final output
         await __event_call__(final_message)
