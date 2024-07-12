@@ -26,7 +26,7 @@ class Tools:
         __event_call__: Optional[callable] = None,
     ) -> str:
         """
-        Embed the testing applet in the chat.
+        Embed the applet in the chat.
         :param body: The request body.
         :param __user__: User information, including the user ID.
         :param __event_emitter__: Function to emit events during the process.
@@ -41,12 +41,6 @@ class Tools:
         user_id = __user__["id"]
 
         try:
-            # Emit initial message
-            await __event_emitter__(
-                {"type": "replace", "data": {"content": "Searching for applet file..."}}
-            )
-            await asyncio.sleep(1)
-
             expected_filename = f"{UPLOAD_DIR}/cerebro/plugins/{self.package_name}/{self.package_name}_capp.html"
             all_files = Files.get_files()
             matching_file = next(
@@ -70,10 +64,7 @@ class Tools:
 
             # Simulate a loading process
             loading_messages = [
-                "Applet file found...",
-                "Preparing to embed...",
-                "Embedding applet...",
-                "Almost there...",
+                "Applet file found... launching",
             ]
             for message in loading_messages:
                 await __event_emitter__(
