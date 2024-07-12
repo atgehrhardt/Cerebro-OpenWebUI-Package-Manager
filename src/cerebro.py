@@ -9,6 +9,15 @@ version: 0.2.1
 IMPORTANT: THIS MUST BE THE SECOND TO LAST PRIORITY IN YOUR CHAIN. SET PRIORITY HIGHER THAN ALL 
            OTHER FUNCTIONS EXCEPT FOR THE CEREBRO TOOL LAUNCHER 
 ! ! !
+
+Commands:
+`owui list` - List installed packages
+`owui install package_name` - Installs a package
+`owui uninstall package_name` - Uninstalls a package
+`owui update package_name` - Updates a package (uninstalls then reinstalls)
+`owui run package_name` - Runs an installed package in the chat window
+
+You can view all current package available for installation here: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/tree/main/plugins
 """
 
 from typing import List, Union, Generator, Iterator, Optional
@@ -294,13 +303,11 @@ class Filter:
                 for file in all_files:
                     if file.startswith(package_dir):
                         print(f"Extracting {file}...")
-                        zip_ref.extract(file, UPLOAD_DIR)  # Use UPLOAD_DIR here
+                        zip_ref.extract(file, UPLOAD_DIR)
 
             # Get the source directory
-            src_dir = os.path.join(UPLOAD_DIR, package_dir)  # Use UPLOAD_DIR here
-            dst_dir = os.path.join(
-                UPLOAD_DIR, "cerebro", "plugins", package_name
-            )  # Use UPLOAD_DIR here
+            src_dir = os.path.join(UPLOAD_DIR, package_dir)
+            dst_dir = os.path.join(UPLOAD_DIR, "cerebro", "plugins", package_name)
 
             print(f"Source directory: {src_dir}")
             print(f"Destination directory: {dst_dir}")
@@ -316,9 +323,7 @@ class Filter:
             shutil.move(src_dir, dst_dir)
 
             # Remove the extracted directory
-            extracted_dir = os.path.join(
-                UPLOAD_DIR, f"{repo_name}-{branch}"
-            )  # Use UPLOAD_DIR here
+            extracted_dir = os.path.join(UPLOAD_DIR, f"{repo_name}-{branch}")
             shutil.rmtree(extracted_dir)
 
             # Loop through all the files in the package directory and create them in the database
@@ -377,19 +382,25 @@ class Filter:
                 # Prepend "cer_" to the tool name
                 cer_tool_name = f"cer_{package_name}"
 
-                # Create a ToolForm instance with the modified name
+                # Extract the description from the tool content
+                description = "Tool for " + package_name  # Default description
+                doc_string = self.extract_class_docstring(tool_content)
+                if doc_string:
+                    description = doc_string.strip()
+
+                # Create a ToolForm instance with the modified name and description
                 tool_form = ToolForm(
                     id=str(uuid.uuid4()),
-                    name=cer_tool_name,  # Use the modified name here
+                    name=cer_tool_name,
                     content=tool_content,
-                    meta=ToolMeta(description=f"Tool for {package_name}"),
+                    meta=ToolMeta(description=description),
                 )
 
                 # Insert the tool
                 tool = Tools.insert_new_tool(self.user_id, tool_form, [])
                 if tool:
                     print(
-                        f"Tool for package {package_name} installed successfully as {cer_tool_name}."
+                        f"Tool for package {package_name} installed successfully as {cer_tool_name} with description: {description}"
                     )
                 else:
                     print(f"Failed to install tool for package {package_name}.")
@@ -400,6 +411,23 @@ class Filter:
         except Exception as e:
             print(f"Error installing package {package_name}: {str(e)}")
             raise Exception(f"Error installing package {package_name}: {str(e)}")
+
+    def extract_class_docstring(self, content: str) -> Optional[str]:
+        """
+        Extract the docstring of the first class in the given content.
+        """
+        import ast
+
+        try:
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    docstring = ast.get_docstring(node)
+                    if docstring:
+                        return docstring
+        except SyntaxError:
+            print("Failed to parse the tool content")
+        return None
 
     def update_package(self, package_name: str):
         if not self.is_package_installed(package_name):
