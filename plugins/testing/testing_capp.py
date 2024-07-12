@@ -8,12 +8,6 @@ from config import UPLOAD_DIR
 
 
 class Tools:
-    """
-    A tool for launching the gui applet Testing
-    Use this tool when you need to display this applet in the conversation.
-    The applet must be previously installed using the package manager.
-    """
-
     def __init__(self):
         self.package_name = "testing"
         self.applet_file_id = None
@@ -26,7 +20,7 @@ class Tools:
         __event_call__: Optional[callable] = None,
     ) -> str:
         """
-        Embed the applet in the chat.
+        Launches the testing applet
         :param body: The request body.
         :param __user__: User information, including the user ID.
         :param __event_emitter__: Function to emit events during the process.
