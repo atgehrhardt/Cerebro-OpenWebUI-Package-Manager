@@ -9,9 +9,7 @@ from config import UPLOAD_DIR
 
 class Tools:
     """
-    A tool for launching the gui applet testing
-    Use this tool when you need to display this applet in the conversation.
-    The applet must be previously installed using the package manager.
+    A tool for launching/running the testing applet
     """
 
     def __init__(self):
