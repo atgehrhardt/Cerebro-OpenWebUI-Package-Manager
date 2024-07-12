@@ -10,7 +10,8 @@ from config import UPLOAD_DIR
 class Tools:
     """
     A tool for launching the gui applet Forecast
-    Use this tool when you need to retrieve information about the weather or the forecast.
+    Use this tool when you need to display this applet in the conversation.
+    The applet must be previously installed using the package manager.
     """
 
     def __init__(self):
@@ -69,7 +70,10 @@ class Tools:
 
             # Simulate a loading process
             loading_messages = [
-                "Applet file found... Launching",
+                "Applet file found...",
+                "Preparing to embed...",
+                "Embedding applet...",
+                "Almost there...",
             ]
             for message in loading_messages:
                 await __event_emitter__(
