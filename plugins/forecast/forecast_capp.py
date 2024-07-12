@@ -8,6 +8,9 @@ from config import UPLOAD_DIR
 
 
 class Tools:
+    """
+    Retrieves information about the weather
+    """
     def __init__(self):
         self.package_name = "forecast"
         self.applet_file_id = None

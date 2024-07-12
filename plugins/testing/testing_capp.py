@@ -8,6 +8,9 @@ from config import UPLOAD_DIR
 
 
 class Tools:
+    """
+    Launches the testing applet
+    """
     def __init__(self):
         self.package_name = "testing"
         self.applet_file_id = None

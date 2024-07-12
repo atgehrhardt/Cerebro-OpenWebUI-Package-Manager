@@ -8,6 +8,9 @@ from config import UPLOAD_DIR
 
 
 class Tools:
+    """
+    Launches a game of Tetris
+    """
     def __init__(self):
         self.package_name = "tetris"
         self.applet_file_id = None
