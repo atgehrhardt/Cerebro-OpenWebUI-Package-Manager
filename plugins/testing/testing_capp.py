@@ -1,54 +1,40 @@
 import os
-import requests
-from datetime import datetime
 from pydantic import BaseModel
-from typing import List
-
+from typing import Optional
+from apps.webui.models.files import Files
 
 class Tools:
     class UserValves(BaseModel):
-        OPENWEATHER_API_KEY: str
-        pass
+        pass  # No specific valves needed for this tool
 
     def __init__(self):
-        pass
+        self.applet_file_id = None
 
-    def get_current_weather(self, city: str, __user__: dict) -> str:
+    def embed_applet(self, package_name: str, __user__: Optional[dict] = None) -> str:
         """
-        Get the current weather for a given city.
-        :param city: The name of the city to get the weather for.
-        :return: The current weather information or an error message.
+        Embed the applet in the chat.
+        :param package_name: The name of the package containing the applet.
+        :return: A string that will be replaced with the embedded applet.
         """
-        print(__user__)
+        if not __user__ or "id" not in __user__:
+            return "Error: User ID not provided"
 
-        user_valves = __user__.get("valves")
-        if not user_valves:
-            return "Tell the user: 'User Valves not configured.'"
-
-        api_key = user_valves.OPENWEATHER_API_KEY
-        if not api_key:
-            return "Tell the user that the API key is must be set in the valves: 'OPENWEATHER_API_KEY'."
-
-        base_url = "http://api.openweathermap.org/data/2.5/weather"
-        params = {
-            "q": city,
-            "appid": api_key,
-            "units": "metric",  # Optional: Use 'imperial' for Fahrenheit
-        }
-
-        try:
-            response = requests.get(base_url, params=params)
-            response.raise_for_status()  # Raise HTTPError for bad responses (4xx and 5xx)
-            data = response.json()
-
-            if data.get("cod") != 200:
-                return f"Error fetching weather data: {data.get('message')}"
-
-            weather_description = data["weather"][0]["description"]
-            temperature = data["main"]["temp"]
-            humidity = data["main"]["humidity"]
-            wind_speed = data["wind"]["speed"]
-
-            return f"Weather in {city}: {temperature}°C - {weather_description}"
-        except requests.RequestException as e:
-            return f"Error fetching weather data: {str(e)}"
+        user_id = __user__["id"]
+        
+        # Construct the expected filename
+        expected_filename = f"/cerebro/plugins/{package_name}/{package_name}_capp.html"
+        
+        # Get all files for the user
+        all_files = Files.get_files()
+        
+        # Find the file with the matching filename
+        matching_file = next((file for file in all_files 
+                              if file.user_id == user_id and file.filename == expected_filename), None)
+        
+        if not matching_file:
+            return f"Error: Applet file for package '{package_name}' not found"
+        
+        self.applet_file_id = matching_file.id
+        
+        # This string will be replaced with the actual applet content
+        return f"{{{{HTML_FILE_ID_{self.applet_file_id}}}}}}"
