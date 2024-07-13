@@ -3,27 +3,32 @@ title: Cerebro Package Manager
 author: Andrew Tait Gehrhardt
 author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager
 funding_url: https://github.com/open-webui
-version: 0.2.0
+version: 0.2.1
 
 ! ! ! 
 IMPORTANT: THIS MUST BE THE SECOND TO LAST PRIORITY IN YOUR CHAIN. SET PRIORITY HIGHER THAN ALL 
            OTHER FUNCTIONS EXCEPT FOR THE CEREBRO TOOL LAUNCHER 
 ! ! !
+
+Commands:
+`owui list` - List installed packages
+`owui install package_name` - Installs a package
+`owui uninstall package_name` - Uninstalls a package
+`owui update package_name` - Updates a package (uninstalls then reinstalls)
+`owui run package_name` - Runs an installed package in the chat window
+
+You can view all current package available for installation here: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/tree/main/plugins
 """
 
-from typing import List, Union, Generator, Iterator, Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 import requests
 import os
-import json
-import aiohttp
 import uuid
-import re
 import zipfile
 import io
 import shutil
 from urllib.parse import urlparse, urlunparse
-from utils.misc import get_last_user_message
 from apps.webui.models.files import Files
 from apps.webui.models.tools import Tools, ToolForm, ToolMeta
 
@@ -370,18 +375,29 @@ class Filter:
                 with open(tool_file, "r", encoding="utf-8") as f:
                     tool_content = f.read()
 
-                # Create a ToolForm instance
+                # Prepend "cer_" to the tool name
+                cer_tool_name = f"cer_{package_name}"
+
+                # Extract the description from the tool content
+                description = "Tool for " + package_name  # Default description
+                doc_string = self.extract_class_docstring(tool_content)
+                if doc_string:
+                    description = doc_string.strip()
+
+                # Create a ToolForm instance with the modified name and description
                 tool_form = ToolForm(
                     id=str(uuid.uuid4()),
-                    name=package_name,
+                    name=cer_tool_name,
                     content=tool_content,
-                    meta=ToolMeta(description=f"Tool for {package_name}"),
+                    meta=ToolMeta(description=description),
                 )
 
                 # Insert the tool
                 tool = Tools.insert_new_tool(self.user_id, tool_form, [])
                 if tool:
-                    print(f"Tool for package {package_name} installed successfully.")
+                    print(
+                        f"Tool for package {package_name} installed successfully as {cer_tool_name} with description: {description}"
+                    )
                 else:
                     print(f"Failed to install tool for package {package_name}.")
 
@@ -391,6 +407,23 @@ class Filter:
         except Exception as e:
             print(f"Error installing package {package_name}: {str(e)}")
             raise Exception(f"Error installing package {package_name}: {str(e)}")
+
+    def extract_class_docstring(self, content: str) -> Optional[str]:
+        """
+        Extract the docstring of the first class in the given content.
+        """
+        import ast
+
+        try:
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    docstring = ast.get_docstring(node)
+                    if docstring:
+                        return docstring
+        except SyntaxError:
+            print("Failed to parse the tool content")
+        return None
 
     def update_package(self, package_name: str):
         if not self.is_package_installed(package_name):
@@ -442,40 +475,31 @@ class Filter:
 
             # Remove files and directories from the file system
             if os.path.exists(package_dir):
-                for root, dirs, files in os.walk(package_dir, topdown=False):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        try:
-                            os.remove(file_path)
-                            print(f"Removed file: {file_path}")
-                        except Exception as e:
-                            print(f"Error removing file {file_path}: {str(e)}")
-                    for dir in dirs:
-                        dir_path = os.path.join(root, dir)
-                        try:
-                            os.rmdir(dir_path)
-                            print(f"Removed directory: {dir_path}")
-                        except Exception as e:
-                            print(f"Error removing directory {dir_path}: {str(e)}")
-                try:
-                    os.rmdir(package_dir)
-                    print(f"Removed package directory: {package_dir}")
-                except Exception as e:
-                    print(f"Error removing package directory {package_dir}: {str(e)}")
+                shutil.rmtree(package_dir)
+                print(f"Removed package directory: {package_dir}")
             else:
                 print(f"Package directory {package_dir} does not exist.")
 
             # Uninstall tool
             tools = Tools.get_tools()
-            tool = next((t for t in tools if t.name == package_name), None)
+            tool_name = (
+                f"cer_{package_name}"  # Look for the tool with the "cer_" prefix
+            )
+            tool = next((t for t in tools if t.name == tool_name), None)
 
             if tool:
                 if Tools.delete_tool_by_id(tool.id):
-                    print(f"Tool for package {package_name} uninstalled successfully.")
+                    print(
+                        f"Tool {tool_name} for package {package_name} uninstalled successfully."
+                    )
                 else:
-                    print(f"Failed to uninstall tool for package {package_name}.")
+                    print(
+                        f"Failed to uninstall tool {tool_name} for package {package_name}."
+                    )
             else:
-                print(f"No tool found for package {package_name}.")
+                print(
+                    f"No tool found with name {tool_name} for package {package_name}."
+                )
 
             print(f"Package {package_name} uninstalled successfully.")
             self.pkg_launch = "Uninstalled"

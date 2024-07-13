@@ -15,17 +15,41 @@ async function getLocationAndWeather() {
 
 async function getWeather(lat, lon) {
     try {
-        const response = await fetch(`https://wttr.in/${lat},${lon}?format=%C+%t+%w+%p+%l`);
-        const data = await response.text();
-        const [condition, temperature, wind, precipitation, location] = data.split(' ');
+        const headers = {
+            "User-Agent": "(myweatherapp.com, contact@myweatherapp.com)",
+            "Accept": "application/geo+json"
+        };
+
+        // First, get the forecast URL for the location
+        const pointsResponse = await fetch(`https://api.weather.gov/points/${lat},${lon}`, { headers });
+        if (!pointsResponse.ok) {
+            throw new Error(`HTTP error! status: ${pointsResponse.status}`);
+        }
+        const pointsData = await pointsResponse.json();
+
+        // Now, get the actual forecast
+        const forecastResponse = await fetch(pointsData.properties.forecast, { headers });
+        if (!forecastResponse.ok) {
+            throw new Error(`HTTP error! status: ${forecastResponse.status}`);
+        }
+        const forecastData = await forecastResponse.json();
+
+        // Extract relevant information
+        const currentPeriod = forecastData.properties.periods[0];
+        const temperature = currentPeriod.temperature;
+        const temperatureUnit = currentPeriod.temperatureUnit;
+        const description = currentPeriod.shortForecast;
+        const windSpeed = currentPeriod.windSpeed;
+        const windDirection = currentPeriod.windDirection;
+        const location = pointsData.properties.relativeLocation.properties.city + ', ' + 
+                         pointsData.properties.relativeLocation.properties.state;
         
         const weatherInfo = document.getElementById('weather-info');
         weatherInfo.innerHTML = `
-            <div class="weather-item"><i class="fas fa-map-marker-alt"></i> ${location.replace('+', ' ')}</div>
-            <div class="weather-item"><i class="fas fa-cloud"></i> ${condition}</div>
-            <div class="weather-item"><i class="fas fa-thermometer-half"></i> ${temperature}</div>
-            <div class="weather-item"><i class="fas fa-wind"></i> ${wind}</div>
-            <div class="weather-item"><i class="fas fa-tint"></i> ${precipitation}</div>
+            <div class="weather-item"><i class="fas fa-map-marker-alt"></i> ${location}</div>
+            <div class="weather-item"><i class="fas fa-cloud"></i> ${description}</div>
+            <div class="weather-item"><i class="fas fa-thermometer-half"></i> ${temperature}°${temperatureUnit}</div>
+            <div class="weather-item"><i class="fas fa-wind"></i> ${windSpeed} from ${windDirection}</div>
         `;
     } catch (error) {
         console.error('Error fetching weather data:', error);
