@@ -1,3 +1,11 @@
+"""
+title: Forecast
+author: Andrew Tait Gehrhardt
+author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/plugins/forecast
+funding_url: https://github.com/open-webui
+version: 0.1.0
+"""
+
 import asyncio
 from asyncio import sleep
 from pydantic import BaseModel, Field
@@ -9,7 +17,7 @@ import aiohttp
 
 class Tools:
     """
-    Used to retrieve forecast data
+    Used to retrieve forecast data based on user's detailed location
     """
 
     class Valves(BaseModel):
@@ -22,6 +30,23 @@ class Tools:
         self.package_name = "forecast"
         self.applet_file_id = None
 
+    async def get_user_location(self, session):
+        """
+        Get user's detailed location based on IP address
+        """
+        async with session.get("https://ipapi.co/json/") as response:
+            if response.status != 200:
+                raise Exception(f"Location API returned status code {response.status}")
+            location_data = await response.json()
+            return {
+                "latitude": location_data["latitude"],
+                "longitude": location_data["longitude"],
+                "city": location_data["city"],
+                "region": location_data["region"],
+                "country": location_data["country_name"],
+                "postal": location_data["postal"],
+            }
+
     async def run(
         self,
         body: Optional[dict] = None,
@@ -30,7 +55,7 @@ class Tools:
         __event_call__: Optional[callable] = None,
     ) -> str:
         """
-        Retrieves information about the weather
+        Retrieves information about the weather for the user's detailed location
         :param body: The request body.
         :param __user__: User information, including the user ID.
         :param __event_emitter__: Function to emit events during the process.
@@ -68,7 +93,6 @@ class Tools:
 
             # Simulate a loading process
             loading_messages = [
-                "Applet file found... launching",
                 "Fetching weather data...",
             ]
             for message in loading_messages:
@@ -77,23 +101,23 @@ class Tools:
                 )
                 await asyncio.sleep(1)
 
-            # Fetch weather data from Weather.gov API
-            # Using Washington, D.C. coordinates as an example
-            latitude, longitude = 38.8951, -77.0364
             headers = {
                 "User-Agent": "(myweatherapp.com, contact@myweatherapp.com)",
                 "Accept": "application/geo+json",
             }
 
             async with aiohttp.ClientSession() as session:
-                # First, get the forecast URL for the location
-                points_url = f"https://api.weather.gov/points/{latitude},{longitude}"
+                # Get user's detailed location
+                location = await self.get_user_location(session)
+
+                # Get the forecast URL for the location
+                points_url = f"https://api.weather.gov/points/{location['latitude']},{location['longitude']}"
                 async with session.get(points_url, headers=headers) as response:
                     if response.status != 200:
                         raise Exception(f"API returned status code {response.status}")
                     points_data = await response.json()
 
-                # Now, get the actual forecast
+                # Get the actual forecast
                 forecast_url = points_data["properties"]["forecast"]
                 async with session.get(forecast_url, headers=headers) as response:
                     if response.status != 200:
@@ -108,14 +132,20 @@ class Tools:
             wind_speed = current_period["windSpeed"]
             wind_direction = current_period["windDirection"]
 
+            # Prepare the detailed location string
+            detailed_location = (
+                f"{location['city']}, {location['region']}, {location['country']}"
+            )
+
             # Prepare the weather report
-            weather_report = f"Current weather in Washington, D.C.:\n"
+            weather_report = f"Current weather in {detailed_location}:\n"
             weather_report += f"Temperature: {temperature}°{temperature_unit}\n"
             weather_report += f"Description: {description}\n"
             weather_report += f"Wind: {wind_speed} from {wind_direction}"
 
             # Finally, replace with the actual applet embed and weather report
-            final_message = f"{{{{HTML_FILE_ID_{self.applet_file_id}}}}}"
+            final_message = f"""{{{{HTML_FILE_ID_{self.applet_file_id}}}}}
+            """
             await __event_emitter__(
                 {"type": "replace", "data": {"content": final_message}}
             )
@@ -123,7 +153,12 @@ class Tools:
             # Simulate a short delay to ensure the message is displayed
             await sleep(0.5)
 
-            return f"I have successfully retrieved the forecast for today. Here are the details:\n\n{weather_report}"
+            return f"""You can find a summary of the weather for {detailed_location} below:\n\n
+            {weather_report}
+
+            Please give a detailed summary of the weather report below and ensure you infor the user of the location.
+            \n\n\n
+            """
 
         except Exception as e:
             error_message = (

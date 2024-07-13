@@ -1,3 +1,11 @@
+"""
+title: Tetris
+author: Andrew Tait Gehrhardt
+author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/plugins/tetris
+funding_url: https://github.com/open-webui
+version: 0.1.0
+"""
+
 import asyncio
 from asyncio import sleep
 from pydantic import BaseModel, Field
@@ -8,7 +16,7 @@ from config import UPLOAD_DIR
 
 class Tools:
     """
-    Launches a game of Tetris
+    A tool that launches a game of tetris. You can use this to play the game tetris.
     """
 
     class Valves(BaseModel):
@@ -84,7 +92,7 @@ class Tools:
             # Simulate a short delay to ensure the message is displayed
             await sleep(0.5)
 
-            return ""
+            return f"Respond to the users that you have succesfully launched {self.package_name}"
 
         except Exception as e:
             error_message = f"An error occurred while launching the applet: {str(e)}"

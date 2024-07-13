@@ -1,3 +1,11 @@
+"""
+title: Google News Feed
+author: Andrew Tait Gehrhardt
+author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/plugins/google_news_feed
+funding_url: https://github.com/open-webui
+version: 0.1.0
+"""
+
 import os
 import asyncio
 from asyncio import sleep
@@ -9,7 +17,7 @@ from config import UPLOAD_DIR
 
 class Tools:
     """
-    Retrieves current news
+    Tool to retrieve the current and recent news. This can be used to show news to the user.
     """
 
     class Valves(BaseModel):
@@ -85,7 +93,7 @@ class Tools:
             # Simulate a short delay to ensure the message is displayed
             await sleep(0.5)
 
-            return ""
+            return "Inform the user that you have retrieved the news for them and they can view it in the window above."
 
         except Exception as e:
             error_message = f"An error occurred while launching the applet: {str(e)}"
