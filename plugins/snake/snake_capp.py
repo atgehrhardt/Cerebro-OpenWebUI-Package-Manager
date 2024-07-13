@@ -14,7 +14,7 @@ class Tools:
 
     class Valves(BaseModel):
         priority: int = Field(
-            default=1, description="Priority level for the filter operations."
+            default=0, description="Priority level for the filter operations."
         )
 
     def __init__(self):
