@@ -6,7 +6,6 @@ funding_url: https://github.com/open-webui
 version: 0.1.0
 """
 
-import os
 import asyncio
 from asyncio import sleep
 from pydantic import BaseModel, Field

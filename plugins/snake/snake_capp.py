@@ -1,4 +1,11 @@
-import os
+"""
+title: Snake
+author: Andrew Tait Gehrhardt
+author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/plugins/snake
+funding_url: https://github.com/open-webui
+version: 0.1.0
+"""
+
 import asyncio
 from asyncio import sleep
 from pydantic import BaseModel, Field
