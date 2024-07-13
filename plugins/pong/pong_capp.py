@@ -16,7 +16,7 @@ from config import UPLOAD_DIR
 
 class Tools:
     """
-    Launches a game of Pong
+    A tool that launches a game of pong. You can use this to play the game pong.
     """
 
     class Valves(BaseModel):

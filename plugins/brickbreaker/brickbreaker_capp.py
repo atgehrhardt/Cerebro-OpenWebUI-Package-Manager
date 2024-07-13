@@ -16,7 +16,7 @@ from config import UPLOAD_DIR
 
 class Tools:
     """
-    Launches a game of Brickbreaker
+    A tool that launches a game of brickbreaker. You can use this to play the game brickbreaker.
     """
 
     class Valves(BaseModel):
