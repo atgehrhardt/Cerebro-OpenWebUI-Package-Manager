@@ -4,11 +4,12 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from apps.webui.models.files import Files
 from config import UPLOAD_DIR
+import aiohttp
 
 
 class Tools:
     """
-    Retrieves information about the weather
+    Used to retrieve forecast data
     """
 
     class Valves(BaseModel):
@@ -68,6 +69,7 @@ class Tools:
             # Simulate a loading process
             loading_messages = [
                 "Applet file found... launching",
+                "Fetching weather data...",
             ]
             for message in loading_messages:
                 await __event_emitter__(
@@ -75,7 +77,44 @@ class Tools:
                 )
                 await asyncio.sleep(1)
 
-            # Finally, replace with the actual applet embed
+            # Fetch weather data from Weather.gov API
+            # Using Washington, D.C. coordinates as an example
+            latitude, longitude = 38.8951, -77.0364
+            headers = {
+                "User-Agent": "(myweatherapp.com, contact@myweatherapp.com)",
+                "Accept": "application/geo+json",
+            }
+
+            async with aiohttp.ClientSession() as session:
+                # First, get the forecast URL for the location
+                points_url = f"https://api.weather.gov/points/{latitude},{longitude}"
+                async with session.get(points_url, headers=headers) as response:
+                    if response.status != 200:
+                        raise Exception(f"API returned status code {response.status}")
+                    points_data = await response.json()
+
+                # Now, get the actual forecast
+                forecast_url = points_data["properties"]["forecast"]
+                async with session.get(forecast_url, headers=headers) as response:
+                    if response.status != 200:
+                        raise Exception(f"API returned status code {response.status}")
+                    forecast_data = await response.json()
+
+            # Extract relevant information
+            current_period = forecast_data["properties"]["periods"][0]
+            temperature = current_period["temperature"]
+            temperature_unit = current_period["temperatureUnit"]
+            description = current_period["shortForecast"]
+            wind_speed = current_period["windSpeed"]
+            wind_direction = current_period["windDirection"]
+
+            # Prepare the weather report
+            weather_report = f"Current weather in Washington, D.C.:\n"
+            weather_report += f"Temperature: {temperature}°{temperature_unit}\n"
+            weather_report += f"Description: {description}\n"
+            weather_report += f"Wind: {wind_speed} from {wind_direction}"
+
+            # Finally, replace with the actual applet embed and weather report
             final_message = f"{{{{HTML_FILE_ID_{self.applet_file_id}}}}}"
             await __event_emitter__(
                 {"type": "replace", "data": {"content": final_message}}
@@ -84,10 +123,13 @@ class Tools:
             # Simulate a short delay to ensure the message is displayed
             await sleep(0.5)
 
-            return ""
+            return f"I have successfully retrieved the forecast for today. Here are the details:\n\n{weather_report}"
 
         except Exception as e:
-            error_message = f"An error occurred while launching the applet: {str(e)}"
+            error_message = (
+                f"An error occurred while fetching the weather data: {str(e)}"
+            )
+            print(f"Debug - Error details: {e}")
             await __event_emitter__(
                 {"type": "replace", "data": {"content": error_message}}
             )
