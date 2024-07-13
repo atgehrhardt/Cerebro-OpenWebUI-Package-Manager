@@ -3,7 +3,7 @@ title: Cerebro Package Manager
 author: Andrew Tait Gehrhardt
 author_url: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager
 funding_url: https://github.com/open-webui
-version: 0.2.1
+version: 0.2.3
 
 ! ! ! 
 IMPORTANT: THIS MUST BE THE SECOND TO LAST PRIORITY IN YOUR CHAIN. SET PRIORITY HIGHER THAN ALL 
@@ -44,7 +44,7 @@ class Filter:
         )
         open_webui_host: str = os.getenv(
             "OPEN_WEBUI_HOST",
-            "https://192.168.1.154",  # If using Nginx this MUST be your server ip address https://192.168.1.xxx
+            "http:host.docker.internal:3000",  # If using Nginx this MUST be your server ip address https://192.168.1.xxx
         )
         openai_base_url: str = os.getenv(
             "OPENAI_BASE_URL", "http://host.docker.internal:11434/v1"
