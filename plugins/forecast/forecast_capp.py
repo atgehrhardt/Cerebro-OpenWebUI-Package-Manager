@@ -1,8 +1,7 @@
-import os
 import asyncio
 from asyncio import sleep
-from pydantic import BaseModel
-from typing import Optional, Union, Generator, Iterator
+from pydantic import BaseModel, Field
+from typing import Optional
 from apps.webui.models.files import Files
 from config import UPLOAD_DIR
 
@@ -11,7 +10,14 @@ class Tools:
     """
     Retrieves information about the weather
     """
+
+    class Valves(BaseModel):
+        priority: int = Field(
+            default=1, description="Priority level for the filter operations."
+        )
+
     def __init__(self):
+        self.valves = self.Valves()
         self.package_name = "forecast"
         self.applet_file_id = None
 

@@ -20,19 +20,15 @@ Commands:
 You can view all current package available for installation here: https://github.com/atgehrhardt/Cerebro-OpenWebUI-Package-Manager/tree/main/plugins
 """
 
-from typing import List, Union, Generator, Iterator, Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 import requests
 import os
-import json
-import aiohttp
 import uuid
-import re
 import zipfile
 import io
 import shutil
 from urllib.parse import urlparse, urlunparse
-from utils.misc import get_last_user_message
 from apps.webui.models.files import Files
 from apps.webui.models.tools import Tools, ToolForm, ToolMeta
 
